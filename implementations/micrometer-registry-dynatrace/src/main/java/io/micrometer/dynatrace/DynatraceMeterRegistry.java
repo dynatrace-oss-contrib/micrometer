@@ -58,7 +58,7 @@ public class DynatraceMeterRegistry extends StepMeterRegistry {
             logger.info("Using Dynatrace v1 exporter.");
             this.exporter = new DynatraceExporterV1(config, clock, httpClient);
         } else {
-            throw new IllegalArgumentException("Only v1 export is available at the moment.");
+            throw new IllegalArgumentException("Api version must be one of \"v1\" or \"v2\".");
         }
         start(threadFactory);
     }

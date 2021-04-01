@@ -76,7 +76,17 @@ public interface DynatraceConfig extends StepRegistryConfig {
         return getEnum(this, DynatraceApiVersion.class, "apiVersion")
                 .orElse(DynatraceApiVersion.V1);
     }
-
+    
+    default String defaultDimensions() {
+        // todo get from spring-boot
+        return "";
+    }
+    
+    default boolean enrichWithOneAgentMetadata() {
+        // todo get from spring-boot
+        return false;
+    }
+    
     @Override
     default Validated<?> validate() {
         return checkAll(this,
