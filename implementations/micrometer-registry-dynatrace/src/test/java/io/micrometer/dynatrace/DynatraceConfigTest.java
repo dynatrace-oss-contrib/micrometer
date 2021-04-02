@@ -105,4 +105,52 @@ class DynatraceConfigTest {
         assertThat(config.validate().isValid()).isTrue();
         assertThat(config.apiVersion()).isSameAs(DynatraceApiVersion.V1);
     }
+
+    @Test
+    void testDefaultOneAgentEndpoint() {
+        Map<String, String> properties = new HashMap<String, String>() {{
+            put("dynatrace.apiVersion", "v2");
+        }};
+
+        DynatraceConfig config = properties::get;
+        assertThat(config.apiToken()).isEqualTo("NO_TOKEN_SET");
+        assertThat(config.uri()).isEqualTo("http://localhost:14499");
+        assertThat(config.apiVersion()).isEqualTo(DynatraceApiVersion.V2);
+
+        Validated<?> validated = config.validate();
+        assertThat(validated.isValid()).isTrue();
+    }
+
+    @Test
+    void testOneAgentEndpointWithDifferentPort() {
+        Map<String, String> properties = new HashMap<String, String>() {{
+            put("dynatrace.apiVersion", "v2");
+            put("dynatrace.uri", "http://localhost:13333");
+        }};
+
+        DynatraceConfig config = properties::get;
+        assertThat(config.apiToken()).isEqualTo("NO_TOKEN_SET");
+        assertThat(config.uri()).isEqualTo("http://localhost:13333");
+        assertThat(config.apiVersion()).isEqualTo(DynatraceApiVersion.V2);
+
+        Validated<?> validated = config.validate();
+        assertThat(validated.isValid()).isTrue();
+    }
+
+    @Test
+    void testV2requiredProperties() {
+        Map<String, String> properties = new HashMap<String, String>() {{
+            put("dynatrace.apiVersion", "v2");
+            put("dynatrace.uri", "https://uri.dynatrace.com");
+            put("dynatrace.apiToken", "secret");
+        }};
+
+        DynatraceConfig config = properties::get;
+        assertThat(config.apiToken()).isEqualTo("secret");
+        assertThat(config.uri()).isEqualTo("https://uri.dynatrace.com");
+        assertThat(config.apiVersion()).isEqualTo(DynatraceApiVersion.V2);
+
+        Validated<?> validated = config.validate();
+        assertThat(validated.isValid()).isTrue();
+    }
 }

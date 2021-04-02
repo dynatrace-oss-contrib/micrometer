@@ -16,12 +16,16 @@
 package io.micrometer.dynatrace;
 
 import io.micrometer.core.instrument.Clock;
+import io.micrometer.core.instrument.Meter;
+import io.micrometer.core.instrument.config.MeterFilter;
+import io.micrometer.core.instrument.distribution.DistributionStatisticConfig;
 import io.micrometer.core.instrument.step.StepMeterRegistry;
 import io.micrometer.core.instrument.util.MeterPartition;
 import io.micrometer.core.instrument.util.NamedThreadFactory;
 import io.micrometer.core.ipc.http.HttpSender;
 import io.micrometer.core.ipc.http.HttpUrlConnectionSender;
 import io.micrometer.dynatrace.v1.DynatraceExporterV1;
+import io.micrometer.dynatrace.v2.ApiV2DynatraceExporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,18 +57,28 @@ public class DynatraceMeterRegistry extends StepMeterRegistry {
     private DynatraceMeterRegistry(DynatraceConfig config, Clock clock, ThreadFactory threadFactory, HttpSender httpClient) {
         super(config, clock);
 
-        this.config = config;
-        if (config.apiVersion() == DynatraceApiVersion.V1) {
-            logger.info("Using Dynatrace v1 exporter.");
-            this.exporter = new DynatraceExporterV1(config, clock, httpClient);
+        if (config.apiVersion() == DynatraceApiVersion.V2)  {
+            logger.info("Exporting to Dynatrace metrics API v2");
+            this.exporter = new ApiV2DynatraceExporter(config, clock, threadFactory, httpClient);
+            registerMinPercentile();
         } else {
-            throw new IllegalArgumentException("Api version must be one of \"v1\" or \"v2\".");
+            // add else if here if there are new APIs to use.
+            logger.info("Exporting to Dynatrace metrics API v1");
+            this.exporter = new ApiV1DynatraceExporter(config, clock, threadFactory, httpClient);
         }
         start(threadFactory);
     }
 
-    public static Builder builder(DynatraceConfig config) {
-        return new Builder(config);
+    private void registerMinPercentile() {
+        config().meterFilter(new MeterFilter() {
+            @Override
+            public DistributionStatisticConfig configure(Meter.Id id, DistributionStatisticConfig config) {
+                return DistributionStatisticConfig.builder()
+                        .percentiles(0)
+                        .build()
+                        .merge(config);
+            }
+        });
     }
 
     @Override
@@ -109,5 +123,6 @@ public class DynatraceMeterRegistry extends StepMeterRegistry {
             return new DynatraceMeterRegistry(config, clock, threadFactory, httpClient);
         }
     }
+
 }
 

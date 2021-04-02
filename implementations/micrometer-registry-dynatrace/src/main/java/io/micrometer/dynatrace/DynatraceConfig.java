@@ -17,8 +17,10 @@ package io.micrometer.dynatrace;
 
 import io.micrometer.core.instrument.config.validate.Validated;
 import io.micrometer.core.instrument.step.StepRegistryConfig;
-import io.micrometer.core.instrument.util.StringUtils;
 import io.micrometer.core.lang.Nullable;
+
+import java.util.Collections;
+import java.util.Map;
 
 import static io.micrometer.core.instrument.config.MeterRegistryConfigValidator.*;
 import static io.micrometer.core.instrument.config.validate.PropertyValidator.*;
@@ -38,11 +40,18 @@ public interface DynatraceConfig extends StepRegistryConfig {
     }
 
     default String apiToken() {
-        return getSecret(this, "apiToken").required().get();
+        if (apiVersion() == DynatraceApiVersion.V1) {
+            return getSecret(this, "apiToken").required().get();
+        }
+        return getSecret(this, "apiToken").orElse("NO_TOKEN_SET");
     }
 
     default String uri() {
-        return getUrlString(this, "uri").required().get();
+        // for v2, if no URI is set, use the default OneAgent endpoint.
+        if (apiVersion() == DynatraceApiVersion.V1) {
+            return getUrlString(this, "uri").required().get();
+        }
+        return getUrlString(this, "uri").orElse("http://localhost:14499");
     }
 
     default String deviceId() {
@@ -50,9 +59,7 @@ public interface DynatraceConfig extends StepRegistryConfig {
     }
 
     default String technologyType() {
-        return getSecret(this, "technologyType")
-                .map(val -> StringUtils.isEmpty(val) ? "java" : val)
-                .get();
+        return getSecret(this, "technologyType").orElse("java");
     }
 
     /**
@@ -67,7 +74,7 @@ public interface DynatraceConfig extends StepRegistryConfig {
     }
 
     /**
-     * Return the version of the target Dynatrace API.
+     * Return the version of the target Dynatrace API. Defaults to v1 if not provided.
      *
      * @return a {@link DynatraceApiVersion} containing the version of the targeted Dynatrace API.
      */
@@ -76,17 +83,23 @@ public interface DynatraceConfig extends StepRegistryConfig {
         return getEnum(this, DynatraceApiVersion.class, "apiVersion")
                 .orElse(DynatraceApiVersion.V1);
     }
-    
-    default String defaultDimensions() {
-        // todo get from spring-boot
-        return "";
+
+    default String metricKeyPrefix() {
+        // returns an empty string if nothing is set in the properties.
+        return getString(this, "metricKeyPrefix").orElse("");
     }
-    
-    default boolean enrichWithOneAgentMetadata() {
-        // todo get from spring-boot
-        return false;
+
+    @Nullable
+    default Map<String, String> defaultDimensions() {
+        return Collections.emptyMap();
     }
-    
+
+    default Boolean enrichWithOneAgentMetadata() {
+        // defaults to false if nothing is set.
+        return getBoolean(this, "enrichWithOneAgentMetadata")
+                .orElse(false);
+    }
+
     @Override
     default Validated<?> validate() {
         return checkAll(this,
@@ -113,5 +126,14 @@ public interface DynatraceConfig extends StepRegistryConfig {
                             }
                         })
         );
+//        return checkAll(
+//                this,
+//                c -> StepRegistryConfig.validate(c),
+//                checkRequired("apiVersion", DynatraceConfig::apiVersion)
+//                        .andThen(v -> v.invalidateWhen(api -> api == DynatraceApiVersion.V1 && StringUtils.isBlank("apiToken"), "requires 'apiToken' to be configured", InvalidReason.MISSING))
+//                        .andThen(v -> v.invalidateWhen(api -> api == DynatraceApiVersion.V1 && StringUtils.isBlank("uri"), "requires 'uri' to be configured", InvalidReason.MISSING))
+//                        .andThen(v -> v.invalidateWhen(api -> api == DynatraceApiVersion.V1 && StringUtils.isBlank("deviceId"), "requires 'deviceId' to be configured", InvalidReason.MISSING))
+//        );
+
     }
 }
