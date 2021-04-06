@@ -44,7 +44,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *
  * @author Johnny Lim
  */
-class DynatraceMeterRegistryTest {
+class DynatraceMeterRegistryImplV1Test {
 
     private final DynatraceMeterRegistry meterRegistry = createMeterRegistry();
     private final DynatraceMeterRegistryImplV1 meterRegistryImpl = createMeterRegistryImpl();
