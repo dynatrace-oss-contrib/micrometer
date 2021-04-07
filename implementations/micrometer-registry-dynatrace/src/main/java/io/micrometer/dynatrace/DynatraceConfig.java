@@ -52,7 +52,7 @@ public interface DynatraceConfig extends StepRegistryConfig {
 
     default String technologyType() {
         return getSecret(this, "technologyType")
-                .map(v -> StringUtils.isEmpty(v) ? "java" : v)
+                .map(val -> StringUtils.isEmpty(val) ? "java" : val)
                 .get();
     }
 
@@ -73,14 +73,15 @@ public interface DynatraceConfig extends StepRegistryConfig {
      * @return a {@link String} containing the version of the targeted Dynatrace API.
      */
     default String apiVersion() {
+        // if not specified, defaults to v1 for backwards compatibility.
         return getString(this, "apiVersion")
-                .map(x -> StringUtils.isEmpty(x) ? "v1" : x)
+                .map(val -> StringUtils.isEmpty(val) ? "v1" : val)
                 .get();
     }
 
     @Override
     default Validated<?> validate() {
-        // at the moment this only works for the Dynatrace v1 API but will use the provided version string as soon as it is available.
+        // Currently only v1 is implemented. This check will be extended once more versions are added.
         Function<DynatraceConfig, Validated<String>> versionFunc = checkRequired("apiVersion", DynatraceConfig::apiVersion);
         String versionStr = versionFunc.apply(this).get();
         if (versionStr.equals("v1")) {
