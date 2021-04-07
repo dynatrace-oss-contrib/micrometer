@@ -77,4 +77,18 @@ class DynatraceConfigTest {
 
         Assertions.assertThrows(IllegalArgumentException.class, config::validate);
     }
+
+    @Test
+    void testFallbackToV1() {
+        Map<String, String> properties = new HashMap<String, String>() {{
+            put("dynatrace.apiToken", "secret");
+            put("dynatrace.uri", "https://uri.dynatrace.com");
+            put("dynatrace.deviceId", "device");
+        }};
+
+        DynatraceConfig config = properties::get;
+        assertThat(config.apiVersion()).isEqualTo("v1");
+        Validated<?> validated = config.validate();
+        assertThat(validated.isValid()).isTrue();
+    }
 }
