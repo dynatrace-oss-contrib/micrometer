@@ -33,6 +33,7 @@ import static io.micrometer.dynatrace.DynatraceMeterRegistryImplBase.DEFAULT_THR
  * @author Jon Schneider
  * @author Johnny Lim
  * @author PJ Fanning
+ * @author Georg Pirklbauer
  * @since 1.1.0
  */
 public class DynatraceMeterRegistry extends StepMeterRegistry {
@@ -42,7 +43,7 @@ public class DynatraceMeterRegistry extends StepMeterRegistry {
         super(config, clock);
         start(threadFactory);
 
-        if (config.apiVersion().startsWith("v1")) {
+        if (config.apiVersion().equals("v1")) {
             this.implementation = new DynatraceMeterRegistryImplV1(config, clock, threadFactory, httpClient);
         } else {
             throw new IllegalArgumentException("Only v1 export is available at the moment.");

@@ -8,6 +8,11 @@ import io.micrometer.core.ipc.http.HttpSender;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Base class for implementations of the {@link io.micrometer.dynatrace.DynatraceMeterRegistry} delegate.
+ *
+ * @author Georg Pirklbauer
+ */
 public abstract class DynatraceMeterRegistryImplBase {
     protected static final ThreadFactory DEFAULT_THREAD_FACTORY = new NamedThreadFactory("dynatrace-metrics-publisher");
 

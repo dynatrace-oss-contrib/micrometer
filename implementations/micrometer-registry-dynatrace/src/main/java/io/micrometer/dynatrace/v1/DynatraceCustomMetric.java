@@ -16,7 +16,6 @@
 
 package io.micrometer.dynatrace.v1;
 
-
 class DynatraceCustomMetric {
     private final DynatraceMetricDefinition metricDefinition;
     private final DynatraceTimeSeries timeSeries;

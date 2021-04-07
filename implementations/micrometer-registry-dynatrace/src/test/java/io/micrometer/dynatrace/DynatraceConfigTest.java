@@ -16,6 +16,7 @@
 package io.micrometer.dynatrace;
 
 import io.micrometer.core.instrument.config.validate.Validated;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
@@ -61,5 +62,19 @@ class DynatraceConfigTest {
         props.put("dynatrace.deviceId", "device");
 
         assertThat(config.validate().isValid()).isTrue();
+    }
+
+    @Test
+    void invalidVersion() {
+        Map<String, String> properties = new HashMap<String, String>() {{
+            put("dynatrace.apiToken", "secret");
+            put("dynatrace.uri", "https://uri.dynatrace.com");
+            put("dynatrace.deviceId", "device");
+            put("dynatrace.apiVersion", "v-INVALID");
+        }};
+
+        DynatraceConfig config = properties::get;
+
+        Assertions.assertThrows(IllegalArgumentException.class, config::validate);
     }
 }

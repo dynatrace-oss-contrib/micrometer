@@ -16,7 +16,6 @@
 package io.micrometer.dynatrace.v1;
 
 import io.micrometer.core.instrument.Meter;
-import io.micrometer.dynatrace.v1.DynatraceNamingConvention;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

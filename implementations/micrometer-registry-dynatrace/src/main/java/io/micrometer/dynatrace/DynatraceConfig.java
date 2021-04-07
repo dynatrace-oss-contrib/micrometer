@@ -29,6 +29,7 @@ import static io.micrometer.core.instrument.config.validate.PropertyValidator.*;
  * Configuration for {@link DynatraceMeterRegistry}
  *
  * @author Oriol Barcelona
+ * @author Georg Pirklbauer
  */
 public interface DynatraceConfig extends StepRegistryConfig {
 
@@ -72,17 +73,17 @@ public interface DynatraceConfig extends StepRegistryConfig {
      * @return a {@link String} containing the version of the targeted Dynatrace API.
      */
     default String apiVersion() {
-        return "v1";
-//        return getString(this, "apiVersion").required().get();
+        return getString(this, "apiVersion")
+                .map(x -> StringUtils.isEmpty(x) ? "v1" : x)
+                .get();
     }
 
     @Override
     default Validated<?> validate() {
-        // once the apiVersion is actually transmitted by spring-boot, use this:
-//        Function<DynatraceConfig, Validated<String>> versionFunc = checkRequired("apiVersion", DynatraceConfig::apiVersion);
-//        String versionStr = versionFunc.apply(this).get();
-        String versionStr = "v1";
-        if (versionStr.startsWith("v1")) {
+        // at the moment this only works for the Dynatrace v1 API but will use the provided version string as soon as it is available.
+        Function<DynatraceConfig, Validated<String>> versionFunc = checkRequired("apiVersion", DynatraceConfig::apiVersion);
+        String versionStr = versionFunc.apply(this).get();
+        if (versionStr.equals("v1")) {
             return checkAll(this,
                     c -> StepRegistryConfig.validate(c),
                     checkRequired("apiToken", DynatraceConfig::apiToken),
@@ -91,8 +92,7 @@ public interface DynatraceConfig extends StepRegistryConfig {
                     check("technologyType", DynatraceConfig::technologyType).andThen(Validated::nonBlank)
             );
         }
-        
-        // else check only api token and uri which are needed for v2. 
-        throw new IllegalArgumentException(String.format("the api version is not valid: %s", versionStr));
+
+        throw new IllegalArgumentException(String.format("The provided API version is not valid: %s.", versionStr));
     }
 }

@@ -41,6 +41,14 @@ import java.util.stream.StreamSupport;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
+/**
+ * Implementation for Dynatrace v1 metrics API export.
+ *
+ * @author Oriol Barcelona
+ * @author Jon Schneider
+ * @author Johnny Lim
+ * @author PJ Fanning
+ */
 public class DynatraceMeterRegistryImplV1 extends DynatraceMeterRegistryImplBase {
     private static final int MAX_MESSAGE_SIZE = 15360; //max message size in bytes that Dynatrace will accept
     private final Logger logger = LoggerFactory.getLogger(DynatraceMeterRegistryImplV1.class.getName());

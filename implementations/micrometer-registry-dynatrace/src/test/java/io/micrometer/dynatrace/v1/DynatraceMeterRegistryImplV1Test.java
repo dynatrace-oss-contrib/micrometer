@@ -21,7 +21,6 @@ import io.micrometer.core.instrument.config.validate.ValidationException;
 import io.micrometer.core.ipc.http.HttpSender;
 import io.micrometer.dynatrace.DynatraceConfig;
 import io.micrometer.dynatrace.DynatraceMeterRegistry;
-import io.micrometer.dynatrace.DynatraceMeterRegistryImplBase;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
