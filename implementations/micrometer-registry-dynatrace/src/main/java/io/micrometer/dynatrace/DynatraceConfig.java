@@ -134,6 +134,5 @@ public interface DynatraceConfig extends StepRegistryConfig {
 //                        .andThen(v -> v.invalidateWhen(api -> api == DynatraceApiVersion.V1 && StringUtils.isBlank("uri"), "requires 'uri' to be configured", InvalidReason.MISSING))
 //                        .andThen(v -> v.invalidateWhen(api -> api == DynatraceApiVersion.V1 && StringUtils.isBlank("deviceId"), "requires 'deviceId' to be configured", InvalidReason.MISSING))
 //        );
-
     }
 }
