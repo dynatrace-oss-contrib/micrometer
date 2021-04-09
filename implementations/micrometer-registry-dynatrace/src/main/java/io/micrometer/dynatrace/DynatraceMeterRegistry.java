@@ -25,7 +25,7 @@ import io.micrometer.core.instrument.util.NamedThreadFactory;
 import io.micrometer.core.ipc.http.HttpSender;
 import io.micrometer.core.ipc.http.HttpUrlConnectionSender;
 import io.micrometer.dynatrace.v1.DynatraceExporterV1;
-import io.micrometer.dynatrace.v2.ApiV2DynatraceExporter;
+import io.micrometer.dynatrace.v2.DynatraceExporterV2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,12 +59,12 @@ public class DynatraceMeterRegistry extends StepMeterRegistry {
 
         if (config.apiVersion() == DynatraceApiVersion.V2)  {
             logger.info("Exporting to Dynatrace metrics API v2");
-            this.exporter = new ApiV2DynatraceExporter(config, clock, threadFactory, httpClient);
+            this.exporter = new DynatraceExporterV2(config, clock, httpClient);
             registerMinPercentile();
         } else {
             // add else if here if there are new APIs to use.
             logger.info("Exporting to Dynatrace metrics API v1");
-            this.exporter = new ApiV1DynatraceExporter(config, clock, threadFactory, httpClient);
+            this.exporter = new DynatraceExporterV1(config, clock, httpClient);
         }
         start(threadFactory);
     }

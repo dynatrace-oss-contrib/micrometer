@@ -31,9 +31,9 @@ import java.util.stream.Collectors;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-class ApiV2DynatraceExporterTest {
+class DynatraceExporterV2Test {
     private final DynatraceMeterRegistry meterRegistry = createMeterRegistry();
-    private final ApiV2DynatraceExporter meterRegistryImpl = createMeterRegistryImpl();
+    private final DynatraceExporterV2 meterRegistryImpl = createMeterRegistryImpl();
 
     private DynatraceConfig createDynatraceConfig() {
         return new DynatraceConfig() {
@@ -72,10 +72,10 @@ class ApiV2DynatraceExporterTest {
                 .build();
     }
 
-    private ApiV2DynatraceExporter createMeterRegistryImpl() {
+    private DynatraceExporterV2 createMeterRegistryImpl() {
         DynatraceConfig config = createDynatraceConfig();
 
-        return new ApiV2DynatraceExporter(config, Clock.SYSTEM,
+        return new DynatraceExporterV2(config, Clock.SYSTEM,
                 request -> new HttpSender.Response(200, null));
     }
 

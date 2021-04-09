@@ -38,25 +38,19 @@ import java.util.stream.StreamSupport;
 /**
  * @author Georg Pirklbauer
  */
-public class ApiV2DynatraceExporter extends AbstractDynatraceExporter {
+public class DynatraceExporterV2 extends AbstractDynatraceExporter {
     private final String endpoint;
     private final MetricBuilderFactory metricBuilderFactory;
-    private final Logger logger = LoggerFactory.getLogger(ApiV2DynatraceExporter.class.getName());
+    private final Logger logger = LoggerFactory.getLogger(DynatraceExporterV2.class.getName());
     private final static Map<String, String> staticDimensions = new HashMap<String, String>() {{
         put("dt.metrics.source", "micrometer");
     }};
 
     private static final int METRIC_LINE_MAX_LENGTH = 2000;
 
-    public ApiV2DynatraceExporter(DynatraceConfig config, Clock clock, HttpSender httpClient) {
-        this(config, clock, DEFAULT_THREAD_FACTORY, httpClient);
-    }
+    public DynatraceExporterV2(DynatraceConfig config, Clock clock,  HttpSender httpClient) {
+        super(config, clock, httpClient);
 
-    public ApiV2DynatraceExporter(DynatraceConfig config, Clock clock, ThreadFactory threadFactory, HttpSender httpClient) {
-        super(config, clock, threadFactory, httpClient);
-
-        this.config = config;
-        this.httpClient = httpClient;
         this.endpoint = config.uri() + "/api/v2/metrics/ingest";
 
         MetricBuilderFactory.MetricBuilderFactoryBuilder factoryBuilder = MetricBuilderFactory
@@ -96,7 +90,7 @@ public class ApiV2DynatraceExporter extends AbstractDynatraceExporter {
         Map<Boolean, List<String>> metricLines =
                 registry.getMeters().stream()
                         .flatMap(this::toMetricLines)
-                        .collect(Collectors.partitioningBy(ApiV2DynatraceExporter::lineLengthBelowLimit));
+                        .collect(Collectors.partitioningBy(DynatraceExporterV2::lineLengthBelowLimit));
 
         // both keys will be present, even if empty.
         if (!metricLines.get(false).isEmpty()) {
