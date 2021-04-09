@@ -17,6 +17,7 @@
 package io.micrometer.dynatrace.v2;
 
 import io.micrometer.core.instrument.*;
+import io.micrometer.core.instrument.distribution.HistogramSnapshot;
 import io.micrometer.core.ipc.http.HttpSender;
 import io.micrometer.dynatrace.DynatraceApiVersion;
 import io.micrometer.dynatrace.DynatraceConfig;
@@ -24,6 +25,7 @@ import io.micrometer.dynatrace.DynatraceMeterRegistry;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -95,7 +97,7 @@ class DynatraceExporterV2Test {
 
         List<String> actual = meterRegistryImpl.toDistributionSummaryLine(summary).collect(Collectors.toList());
         assertThat(actual).hasSize(1);
-        assertThat(actual.get(0)).startsWith("my.summary,dt.metrics.source=micrometer gauge,");
+        assertThat(actual.get(0)).startsWith("my.summary,dt.metrics.source=micrometer gauge");
         assertThat(actual.get(0)).contains("max=").contains("min=").contains("sum=").contains("count=");
     }
 
@@ -106,7 +108,7 @@ class DynatraceExporterV2Test {
 
         List<String> actual = meterRegistryImpl.toGaugeLine(myGauge).collect(Collectors.toList());
         assertThat(actual).hasSize(1);
-        assertThat(actual.get(0)).startsWith("my.gauge,dt.metrics.source=micrometer gauge,1.23");
+        assertThat(actual.get(0)).startsWith("my.gauge,dt.metrics.source=micrometer gauge,1.23 ");
         String expectedDummy = "my.gauge,dt.metrics.source=micrometer gauge,1.23 1617714022879000";
         assertThat(actual.get(0)).hasSize(expectedDummy.length());
     }
@@ -133,12 +135,13 @@ class DynatraceExporterV2Test {
         counter.increment();
         counter.increment();
 
+        String expected = String.format("my.counter,dt.metrics.source=micrometer count,delta=%.0f ", counter.count());
         List<String> actual = meterRegistryImpl.toCounterLine(counter).collect(Collectors.toList());
         assertThat(actual).hasSize(1);
         String actualLine = actual.get(0);
         String expectedDummy = "my.counter,dt.metrics.source=micrometer count,delta=3 1617714022879000";
         assertThat(actualLine).hasSize(expectedDummy.length());
-        assertThat(actualLine).startsWith("my.counter,dt.metrics.source=micrometer count,delta=");
+        assertThat(actualLine).startsWith(expected);
     }
 
     @Test
@@ -160,10 +163,21 @@ class DynatraceExporterV2Test {
 
         }
 
+        double min = timer.max(TimeUnit.MILLISECONDS); // we expect only one value and then min == max.
+        // the timer measures different times on each execution, which leads to different truncation
+        // ( the dynatrace exporter does not export trailing zeroes)
+        // therefore we ignore the decimal places for this comparison
+        String expectedMin = String.format("min=%.0f", min);
+        String expectedMax = String.format("max=%.0f", timer.max(TimeUnit.MILLISECONDS));
+        String expectedSum = String.format("sum=%.0f", timer.totalTime(TimeUnit.MILLISECONDS));
+        String expectedCount = String.format("count=%d", timer.count());
         List<String> actual = meterRegistryImpl.toTimerLine(timer).collect(Collectors.toList());
         assertThat(actual).hasSize(1);
         assertThat(actual.get(0)).startsWith("my.timer,dt.metrics.source=micrometer gauge,");
-        assertThat(actual.get(0)).contains("max=").contains("min=").contains("sum=").contains("count=");
+        assertThat(actual.get(0)).contains(expectedMin);
+        assertThat(actual.get(0)).contains(expectedMax);
+        assertThat(actual.get(0)).contains(expectedSum);
+        assertThat(actual.get(0)).contains(expectedCount);
     }
 
 //    @Test
