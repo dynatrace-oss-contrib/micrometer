@@ -15,6 +15,7 @@
  */
 package io.micrometer.dynatrace;
 
+import io.micrometer.core.instrument.config.validate.InvalidReason;
 import io.micrometer.core.instrument.config.validate.Validated;
 import io.micrometer.core.instrument.step.StepRegistryConfig;
 import io.micrometer.core.lang.Nullable;
@@ -48,6 +49,7 @@ public interface DynatraceConfig extends StepRegistryConfig {
 
     default String uri() {
         // for v2, if no URI is set, use the default OneAgent endpoint.
+        // <https://www.dynatrace.com/support/help/how-to-use-dynatrace/metrics/metric-ingestion/ingestion-methods/local-api/>
         if (apiVersion() == DynatraceApiVersion.V1) {
             return getUrlString(this, "uri").required().get();
         }
@@ -126,13 +128,5 @@ public interface DynatraceConfig extends StepRegistryConfig {
                             }
                         })
         );
-//        return checkAll(
-//                this,
-//                c -> StepRegistryConfig.validate(c),
-//                checkRequired("apiVersion", DynatraceConfig::apiVersion)
-//                        .andThen(v -> v.invalidateWhen(api -> api == DynatraceApiVersion.V1 && StringUtils.isBlank("apiToken"), "requires 'apiToken' to be configured", InvalidReason.MISSING))
-//                        .andThen(v -> v.invalidateWhen(api -> api == DynatraceApiVersion.V1 && StringUtils.isBlank("uri"), "requires 'uri' to be configured", InvalidReason.MISSING))
-//                        .andThen(v -> v.invalidateWhen(api -> api == DynatraceApiVersion.V1 && StringUtils.isBlank("deviceId"), "requires 'deviceId' to be configured", InvalidReason.MISSING))
-//        );
     }
 }

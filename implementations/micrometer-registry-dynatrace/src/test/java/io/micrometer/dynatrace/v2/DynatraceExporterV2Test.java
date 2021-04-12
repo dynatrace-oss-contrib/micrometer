@@ -17,7 +17,6 @@
 package io.micrometer.dynatrace.v2;
 
 import io.micrometer.core.instrument.*;
-import io.micrometer.core.instrument.distribution.HistogramSnapshot;
 import io.micrometer.core.ipc.http.HttpSender;
 import io.micrometer.dynatrace.DynatraceApiVersion;
 import io.micrometer.dynatrace.DynatraceConfig;
@@ -25,7 +24,6 @@ import io.micrometer.dynatrace.DynatraceMeterRegistry;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -35,7 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class DynatraceExporterV2Test {
     private final DynatraceMeterRegistry meterRegistry = createMeterRegistry();
-    private final DynatraceExporterV2 meterRegistryImpl = createMeterRegistryImpl();
+    private final DynatraceExporterV2 exporter = createExporter();
 
     private DynatraceConfig createDynatraceConfig() {
         return new DynatraceConfig() {
@@ -74,7 +72,7 @@ class DynatraceExporterV2Test {
                 .build();
     }
 
-    private DynatraceExporterV2 createMeterRegistryImpl() {
+    private DynatraceExporterV2 createExporter() {
         DynatraceConfig config = createDynatraceConfig();
 
         return new DynatraceExporterV2(config, Clock.SYSTEM,
@@ -82,20 +80,14 @@ class DynatraceExporterV2Test {
     }
 
     @Test
-    public void testToDistributionSummaryLine() {
+    void testToDistributionSummaryLine() {
         DistributionSummary summary = DistributionSummary.builder("my.summary").register(meterRegistry);
         summary.record(3.1);
         summary.record(2.3);
         summary.record(5.4);
         summary.record(.1);
 
-        try {
-            Thread.sleep(25);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        List<String> actual = meterRegistryImpl.toDistributionSummaryLine(summary).collect(Collectors.toList());
+        List<String> actual = exporter.toDistributionSummaryLine(summary).collect(Collectors.toList());
         assertThat(actual).hasSize(1);
         assertThat(actual.get(0)).startsWith("my.summary,dt.metrics.source=micrometer gauge");
         assertThat(actual.get(0)).contains("max=").contains("min=").contains("sum=").contains("count=");
@@ -106,12 +98,13 @@ class DynatraceExporterV2Test {
         meterRegistry.gauge("my.gauge", 1.23);
         Gauge myGauge = meterRegistry.find("my.gauge").gauge();
 
-        List<String> actual = meterRegistryImpl.toGaugeLine(myGauge).collect(Collectors.toList());
+        List<String> actual = exporter.toGaugeLine(myGauge).collect(Collectors.toList());
         assertThat(actual).hasSize(1);
         assertThat(actual.get(0)).startsWith("my.gauge,dt.metrics.source=micrometer gauge,1.23 ");
         String expectedDummy = "my.gauge,dt.metrics.source=micrometer gauge,1.23 1617714022879000";
         assertThat(actual.get(0)).hasSize(expectedDummy.length());
     }
+
 
     @Test
     void toMeterLine() {
@@ -119,7 +112,7 @@ class DynatraceExporterV2Test {
         Gauge gauge = meterRegistry.find("my.meter").gauge();
         assertNotNull(gauge);
 
-        List<String> actual = meterRegistryImpl.toMeterLine(gauge).collect(Collectors.toList());
+        List<String> actual = exporter.toMeterLine(gauge).collect(Collectors.toList());
         assertThat(actual).hasSize(1);
         assertThat(actual.get(0)).startsWith("my.meter,dt.metrics.source=micrometer gauge,1.23");
         String expectedDummy = "my.meter,dt.metrics.source=micrometer gauge,1.23 1617714022879000";
@@ -136,7 +129,7 @@ class DynatraceExporterV2Test {
         counter.increment();
 
         String expected = String.format("my.counter,dt.metrics.source=micrometer count,delta=%.0f ", counter.count());
-        List<String> actual = meterRegistryImpl.toCounterLine(counter).collect(Collectors.toList());
+        List<String> actual = exporter.toCounterLine(counter).collect(Collectors.toList());
         assertThat(actual).hasSize(1);
         String actualLine = actual.get(0);
         String expectedDummy = "my.counter,dt.metrics.source=micrometer count,delta=3 1617714022879000";
@@ -160,49 +153,48 @@ class DynatraceExporterV2Test {
         try {
             Thread.sleep(100);
         } catch (InterruptedException ignored) {
-
         }
 
-        double min = timer.max(TimeUnit.MILLISECONDS); // we expect only one value and then min == max.
-        // the timer measures different times on each execution, which leads to different truncation
-        // ( the dynatrace exporter does not export trailing zeroes)
-        // therefore we ignore the decimal places for this comparison
-        String expectedMin = String.format("min=%.0f", min);
-        String expectedMax = String.format("max=%.0f", timer.max(TimeUnit.MILLISECONDS));
-        String expectedSum = String.format("sum=%.0f", timer.totalTime(TimeUnit.MILLISECONDS));
-        String expectedCount = String.format("count=%d", timer.count());
-        List<String> actual = meterRegistryImpl.toTimerLine(timer).collect(Collectors.toList());
+        List<String> actual = exporter.toTimerLine(timer).collect(Collectors.toList());
         assertThat(actual).hasSize(1);
         assertThat(actual.get(0)).startsWith("my.timer,dt.metrics.source=micrometer gauge,");
-        assertThat(actual.get(0)).contains(expectedMin);
-        assertThat(actual.get(0)).contains(expectedMax);
-        assertThat(actual.get(0)).contains(expectedSum);
-        assertThat(actual.get(0)).contains(expectedCount);
+        assertThat(actual.get(0)).contains("min=");
+        assertThat(actual.get(0)).contains("max=");
+        assertThat(actual.get(0)).contains("sum=");
+        assertThat(actual.get(0)).contains("count=");
     }
 
-//    @Test
-//    void toLongTaskTimerLine() {
-//        LongTaskTimer.builder("my.long.task.timer").register(meterRegistry);
-//        LongTaskTimer longTaskTimer = meterRegistry.find("my.long.task.timer").longTaskTimer();
-//        assertNotNull(longTaskTimer);
-//        longTaskTimer.record(() -> {
-//            try {
-//                Thread.sleep(40);
-//            } catch (InterruptedException ignored) {
-//            }
-//        });
-//
-//
-//        try {
-//            Thread.sleep(100);
-//        } catch (InterruptedException ignored) {
-//        }
-//
-//        List<String> actual = meterRegistryImpl.toLongTaskTimerLine(longTaskTimer).collect(Collectors.toList());
-//        assertThat(actual).hasSize(1);
-//        assertThat(actual.get(0)).startsWith("my.long.task.timer,dt.metrics.source=micrometer gauge,");
-//        assertThat(actual.get(0)).contains("max=").contains("min=").contains("sum=").contains("count=");
-//    }
+    @Test
+    void toLongTaskTimerLine() {
+        LongTaskTimer.builder("my.long.task.timer").register(meterRegistry);
+        LongTaskTimer longTaskTimer = meterRegistry.find("my.long.task.timer").longTaskTimer();
+        assertNotNull(longTaskTimer);
+
+        // needs to be run in the background, otherwise record will wait until the task is finished.
+        Runnable r = new Runnable() {
+            @Override
+            public void run() {
+                longTaskTimer.record(() -> {
+                    try {
+                        Thread.sleep(300);
+                    } catch (InterruptedException ignored) {
+                    }
+                });
+            }
+        };
+        new Thread(r).start();
+
+        // wait for the first scrape to be recorded.
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException ignored) {
+        }
+
+        List<String> actual = exporter.toLongTaskTimerLine(longTaskTimer).collect(Collectors.toList());
+        assertThat(actual).hasSize(1);
+        assertThat(actual.get(0)).startsWith("my.long.task.timer,dt.metrics.source=micrometer gauge,");
+        assertThat(actual.get(0)).contains("max=").contains("min=").contains("sum=").contains("count=");
+    }
 
     @Test
     void toTimeGaugeLine() {
@@ -210,14 +202,14 @@ class DynatraceExporterV2Test {
         TimeGauge timeGauge = meterRegistry.find("my.time.gauge").timeGauge();
         assertNotNull(timeGauge);
 
-        List<String> actual = meterRegistryImpl.toTimeGaugeLine(timeGauge).collect(Collectors.toList());
+        List<String> actual = exporter.toTimeGaugeLine(timeGauge).collect(Collectors.toList());
         assertThat(actual).hasSize(1);
         assertThat(actual.get(0)).hasSize("my.time.gauge,dt.metrics.source=micrometer gauge,2.3 1617776498381000".length());
         assertThat(actual.get(0)).startsWith("my.time.gauge,dt.metrics.source=micrometer gauge,2.3 ");
     }
 
     @Test
-    void toFunctionCounterLine() throws InterruptedException {
+    void toFunctionCounterLine() {
         class TestClass {
             double count() {
                 return 2.3;
@@ -230,7 +222,7 @@ class DynatraceExporterV2Test {
 
         tester.count();
 
-        List<String> actual = meterRegistryImpl.toFunctionCounterLine(functionCounter).collect(Collectors.toList());
+        List<String> actual = exporter.toFunctionCounterLine(functionCounter).collect(Collectors.toList());
         assertThat(actual).hasSize(1);
         assertThat(actual.get(0)).hasSize("my.function.counter,dt.metrics.source=micrometer count,delta=0 1617776498381000".length());
         assertThat(actual.get(0)).startsWith("my.function.counter,dt.metrics.source=micrometer count,delta=");
@@ -256,21 +248,42 @@ class DynatraceExporterV2Test {
         assertNotNull(functionTimer);
 
 
-        List<String> actual = meterRegistryImpl.toFunctionTimerLine(functionTimer).collect(Collectors.toList());
+        List<String> actual = exporter.toFunctionTimerLine(functionTimer).collect(Collectors.toList());
         assertThat(actual).hasSize(2);
         assertThat(actual.get(0)).startsWith("my.function.timer.count,dt.metrics.source=micrometer gauge,");
         assertThat(actual.get(1)).startsWith("my.function.timer.sum,dt.metrics.source=micrometer gauge,");
     }
 
     @Test
-    void toGauge() {
+    void toGaugeInvalidName() {
         // invalid name.
         meterRegistry.gauge("~~~", 1.23);
         Gauge gauge = meterRegistry.find("~~~").gauge();
         assertNotNull(gauge);
 
-        List<String> actual = meterRegistryImpl.toGauge(gauge).collect(Collectors.toList());
+        List<String> actual = exporter.toGauge(gauge).collect(Collectors.toList());
         assertThat(actual).isEmpty();
+    }
+
+    @Test
+    void toGaugeInvalidCases() {
+        meterRegistry.gauge("my.gauge1", Double.NaN);
+        Gauge gauge1 = meterRegistry.find("my.gauge1").gauge();
+        List<String> actual1 = exporter.toGauge(gauge1).collect(Collectors.toList());
+        assertNotNull(gauge1);
+        assertThat(actual1).isEmpty();
+
+        meterRegistry.gauge("my.gauge2", Double.NEGATIVE_INFINITY);
+        Gauge gauge2 = meterRegistry.find("my.gauge2").gauge();
+        assertNotNull(gauge2);
+        List<String> actual2 = exporter.toGauge(gauge2).collect(Collectors.toList());
+        assertThat(actual2).isEmpty();
+
+        meterRegistry.gauge("my.gauge3", Double.POSITIVE_INFINITY);
+        Gauge gauge3 = meterRegistry.find("my.gauge3").gauge();
+        assertNotNull(gauge3);
+        List<String> actual3 = exporter.toGauge(gauge3).collect(Collectors.toList());
+        assertThat(actual3).isEmpty();
     }
 
     @Test
@@ -280,7 +293,7 @@ class DynatraceExporterV2Test {
         Gauge gauge = meterRegistry.find("my.gauge").gauge();
         assertNotNull(gauge);
 
-        List<String> actual = meterRegistryImpl.toGauge(gauge).collect(Collectors.toList());
+        List<String> actual = exporter.toGauge(gauge).collect(Collectors.toList());
         assertThat(actual).hasSize(1);
         assertThat(actual.get(0)).contains("tag1=value1").contains("tag2=value2").contains("dt.metrics.source=micrometer");
         assertThat(actual.get(0)).startsWith("my.gauge,");
@@ -288,16 +301,36 @@ class DynatraceExporterV2Test {
     }
 
     @Test
-    void toCounter() {
+    void toCounterInvalidName() {
         // invalid name.
         meterRegistry.counter("~~~");
         Counter counter = meterRegistry.find("~~~").counter();
         assertNotNull(counter);
 
-        List<String> actual = meterRegistryImpl.toCounter(counter).collect(Collectors.toList());
+        List<String> actual = exporter.toCounter(counter).collect(Collectors.toList());
         assertThat(actual).isEmpty();
     }
 
+    @Test
+    void toCounterInvalidCases() {
+        meterRegistry.counter("my.counter1");
+        Counter counter = meterRegistry.find("my.counter1").counter();
+        assertNotNull(counter);
+
+        counter.increment(Double.NaN);
+        List<String> actual1 = exporter.toCounter(counter).collect(Collectors.toList());
+        counter.increment(Double.POSITIVE_INFINITY);
+        List<String> actual2 = exporter.toCounter(counter).collect(Collectors.toList());
+        counter.increment(Double.NEGATIVE_INFINITY);
+        List<String> actual3 = exporter.toCounter(counter).collect(Collectors.toList());
+        assertThat(actual1).hasSize(1);
+        assertThat(actual2).hasSize(1);
+        assertThat(actual3).hasSize(1);
+
+        assertThat(actual1.get(0)).contains("count,delta=0");
+        assertThat(actual2.get(0)).contains("count,delta=0");
+        assertThat(actual3.get(0)).contains("count,delta=0");
+    }
 
     @Test
     void toCounterTags() {
@@ -306,7 +339,7 @@ class DynatraceExporterV2Test {
         Counter counter = meterRegistry.find("my.counter").counter();
         assertNotNull(counter);
 
-        List<String> actual = meterRegistryImpl.toCounter(counter).collect(Collectors.toList());
+        List<String> actual = exporter.toCounter(counter).collect(Collectors.toList());
         assertThat(actual).hasSize(1);
         assertThat(actual.get(0)).contains("tag1=value1").contains("tag2=value2").contains("dt.metrics.source=micrometer");
         assertThat(actual.get(0)).startsWith("my.counter,");

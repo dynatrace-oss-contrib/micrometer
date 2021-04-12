@@ -30,7 +30,6 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.ThreadFactory;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -42,13 +41,13 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
     private final String endpoint;
     private final MetricBuilderFactory metricBuilderFactory;
     private final Logger logger = LoggerFactory.getLogger(DynatraceExporterV2.class.getName());
-    private final static Map<String, String> staticDimensions = new HashMap<String, String>() {{
+    private static final Map<String, String> staticDimensions = new HashMap<String, String>() {{
         put("dt.metrics.source", "micrometer");
     }};
 
     private static final int METRIC_LINE_MAX_LENGTH = 2000;
 
-    public DynatraceExporterV2(DynatraceConfig config, Clock clock,  HttpSender httpClient) {
+    public DynatraceExporterV2(DynatraceConfig config, Clock clock, HttpSender httpClient) {
         super(config, clock, httpClient);
 
         this.endpoint = config.uri() + "/api/v2/metrics/ingest";
@@ -158,12 +157,17 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
         List<String> serializedLine = new ArrayList<>(1);
         try {
+            throwIfValueIsInvalid(max);
+            throwIfValueIsInvalid(total);
+
             serializedLine.add(
                     createMetricBuilder(meter, meter.getId().getName())
                             .setDoubleSummaryValue(min, max, total, count)
                             .serialize());
         } catch (MetricException e) {
             logger.warn("Could not serialize metric with name {}", meter.getId().getName());
+        } catch (IllegalArgumentException iae) {
+            logger.warn(String.format("Illegal value for metric with name %s: %s Dropping...", meter.getId().getName(), iae.getMessage()));
         }
 
         return streamOf(serializedLine);
@@ -200,10 +204,20 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
         return toGauge(meter);
     }
 
+    private void throwIfValueIsInvalid(Double value) {
+        if (value.isNaN()) {
+            throw new IllegalArgumentException("Value cannot be NaN.");
+        }
+        if (value.isInfinite()) {
+            throw new IllegalArgumentException("Value cannot be infinite.");
+        }
+    }
+
     Stream<String> toGauge(Meter meter) {
         return streamOf(meter.measure()).map(
                 measurement -> {
                     try {
+                        throwIfValueIsInvalid(measurement.getValue());
                         String metricKey = createMetricKey(meter.getId().getName(),
                                 measurement.getStatistic().getTagValueRepresentation());
                         if (metricKey == null) {
@@ -214,6 +228,8 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
                                 .serialize();
                     } catch (MetricException e) {
                         logger.warn("Could not serialize metric with name {}", meter.getId().getName());
+                    } catch (IllegalArgumentException iae) {
+                        logger.warn(String.format("Illegal value for metric with name %s: %s Dropping...", meter.getId().getName(), iae.getMessage()));
                     }
                     return null;
                 })
@@ -224,11 +240,14 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
         return streamOf(meter.measure()).map(
                 measurement -> {
                     try {
+                        throwIfValueIsInvalid(measurement.getValue());
                         return createMetricBuilder(meter, meter.getId().getName())
                                 .setDoubleCounterValueDelta(measurement.getValue())
                                 .serialize();
                     } catch (MetricException e) {
                         logger.warn(String.format("could not serialize metric with name %s", meter.getId().getName()));
+                    } catch (IllegalArgumentException iae) {
+                        logger.warn(String.format("Illegal value for metric with name %s: %s Dropping...", meter.getId().getName(), iae.getMessage()));
                     }
                     return null;
                 })
@@ -287,9 +306,7 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
                     .withHeader("Authorization", "Api-Token " + config.apiToken())
                     .withPlainText(body)
                     .send()
-                    .onSuccess((r) -> {
-                        logger.info("Ingested {} metric lines into Dynatrace, response: {}", metricLines.size(), r.body());
-                    })
+                    .onSuccess((r) -> logger.info("Ingested {} metric lines into Dynatrace, response: {}", metricLines.size(), r.body()))
                     .onError((r) -> logger.error("Failed metric ingestion. code={} body={}", r.code(), r.body()));
         } catch (Throwable throwable) {
             logger.error("Failed metric ingestion: {}", throwable.getMessage());
