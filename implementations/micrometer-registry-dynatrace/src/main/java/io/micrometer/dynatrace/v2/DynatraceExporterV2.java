@@ -28,6 +28,8 @@ import io.micrometer.dynatrace.DynatraceConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -50,7 +52,8 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
     public DynatraceExporterV2(DynatraceConfig config, Clock clock, HttpSender httpClient) {
         super(config, clock, httpClient);
 
-        this.endpoint = config.uri() + "/api/v2/metrics/ingest";
+        this.endpoint = prepareEndpoint(config);
+        logger.debug(String.format("exporting to endpoint %s", endpoint));
 
         MetricBuilderFactory.MetricBuilderFactoryBuilder factoryBuilder = MetricBuilderFactory
                 .builder()
@@ -65,6 +68,22 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
         }
 
         metricBuilderFactory = factoryBuilder.build();
+    }
+
+    private String prepareEndpoint(DynatraceConfig config) {
+        String endpoint;
+
+        if (config.uri().matches("/metrics/ingest/?$")) {
+            endpoint = config.uri();
+        } else {
+            try {
+                endpoint = new URL(new URL(config.uri()), "/api/v2/metrics/ingest").toString();
+            } catch (MalformedURLException e) {
+                logger.warn("could not parse endpoint url. Falling back to local OneAgent endpoint.");
+                endpoint = "http://127.0.0.1:14499/metrics/ingest";
+            }
+        }
+        return endpoint;
     }
 
     private DimensionList parseDefaultDimensions(Map<String, String> defaultDimensions) {
