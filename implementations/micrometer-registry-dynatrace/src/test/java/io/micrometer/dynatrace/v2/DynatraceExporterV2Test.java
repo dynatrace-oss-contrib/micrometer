@@ -101,7 +101,7 @@ class DynatraceExporterV2Test {
         List<String> actual = exporter.toGaugeLine(myGauge).collect(Collectors.toList());
         assertThat(actual).hasSize(1);
         assertThat(actual.get(0)).startsWith("my.gauge,dt.metrics.source=micrometer gauge,1.23 ");
-        String expectedDummy = "my.gauge,dt.metrics.source=micrometer gauge,1.23 1617714022879000";
+        String expectedDummy = "my.gauge,dt.metrics.source=micrometer gauge,1.23 1617714022879";
         assertThat(actual.get(0)).hasSize(expectedDummy.length());
     }
 
@@ -115,7 +115,7 @@ class DynatraceExporterV2Test {
         List<String> actual = exporter.toMeterLine(gauge).collect(Collectors.toList());
         assertThat(actual).hasSize(1);
         assertThat(actual.get(0)).startsWith("my.meter,dt.metrics.source=micrometer gauge,1.23");
-        String expectedDummy = "my.meter,dt.metrics.source=micrometer gauge,1.23 1617714022879000";
+        String expectedDummy = "my.meter,dt.metrics.source=micrometer gauge,1.23 1617714022879";
         assertThat(actual.get(0)).hasSize(expectedDummy.length());
     }
 
@@ -132,7 +132,7 @@ class DynatraceExporterV2Test {
         List<String> actual = exporter.toCounterLine(counter).collect(Collectors.toList());
         assertThat(actual).hasSize(1);
         String actualLine = actual.get(0);
-        String expectedDummy = "my.counter,dt.metrics.source=micrometer count,delta=3 1617714022879000";
+        String expectedDummy = "my.counter,dt.metrics.source=micrometer count,delta=3 1617714022879";
         assertThat(actualLine).hasSize(expectedDummy.length());
         assertThat(actualLine).startsWith(expected);
     }
@@ -204,7 +204,7 @@ class DynatraceExporterV2Test {
 
         List<String> actual = exporter.toTimeGaugeLine(timeGauge).collect(Collectors.toList());
         assertThat(actual).hasSize(1);
-        assertThat(actual.get(0)).hasSize("my.time.gauge,dt.metrics.source=micrometer gauge,2.3 1617776498381000".length());
+        assertThat(actual.get(0)).hasSize("my.time.gauge,dt.metrics.source=micrometer gauge,2.3 1617776498381".length());
         assertThat(actual.get(0)).startsWith("my.time.gauge,dt.metrics.source=micrometer gauge,2.3 ");
     }
 
@@ -224,7 +224,7 @@ class DynatraceExporterV2Test {
 
         List<String> actual = exporter.toFunctionCounterLine(functionCounter).collect(Collectors.toList());
         assertThat(actual).hasSize(1);
-        assertThat(actual.get(0)).hasSize("my.function.counter,dt.metrics.source=micrometer count,delta=0 1617776498381000".length());
+        assertThat(actual.get(0)).hasSize("my.function.counter,dt.metrics.source=micrometer count,delta=0 1617776498381".length());
         assertThat(actual.get(0)).startsWith("my.function.counter,dt.metrics.source=micrometer count,delta=");
     }
 
@@ -297,7 +297,7 @@ class DynatraceExporterV2Test {
         assertThat(actual).hasSize(1);
         assertThat(actual.get(0)).contains("tag1=value1").contains("tag2=value2").contains("dt.metrics.source=micrometer");
         assertThat(actual.get(0)).startsWith("my.gauge,");
-        assertThat(actual.get(0)).hasSize("my.gauge,dt.metrics.source=micrometer,tag1=value1,tag2=value2 gauge,1.23 1617776498381000".length());
+        assertThat(actual.get(0)).hasSize("my.gauge,dt.metrics.source=micrometer,tag1=value1,tag2=value2 gauge,1.23 1617776498381".length());
     }
 
     @Test
@@ -343,6 +343,6 @@ class DynatraceExporterV2Test {
         assertThat(actual).hasSize(1);
         assertThat(actual.get(0)).contains("tag1=value1").contains("tag2=value2").contains("dt.metrics.source=micrometer");
         assertThat(actual.get(0)).startsWith("my.counter,");
-        assertThat(actual.get(0)).hasSize("my.counter,tag1=value1,dt.metrics.source=micrometer,tag2=value2 count,delta=0 1617796526714000".length());
+        assertThat(actual.get(0)).hasSize("my.counter,tag1=value1,dt.metrics.source=micrometer,tag2=value2 count,delta=0 1617796526714".length());
     }
 }

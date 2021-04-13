@@ -258,7 +258,7 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
         return metricBuilderFactory
                 .newMetricBuilder(metricKey)
                 .setDimensions(fromTags(meter.getId().getTags()))
-                .setTimestamp(Instant.ofEpochSecond(clock.wallTime()));
+                .setTimestamp(Instant.ofEpochMilli(clock.wallTime()));
     }
 
     private String createMetricKey(String name, String tagValueRepresentation) {
