@@ -153,8 +153,8 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
     Stream<String> toTimerLine(Timer meter) {
         HistogramSnapshot histogramSnapshot = meter.takeSnapshot();
-        double total = meter.totalTime(getBaseTimeUnit());
-        double max = meter.max(getBaseTimeUnit());
+        double total = histogramSnapshot.total(getBaseTimeUnit());
+        double max = histogramSnapshot.max(getBaseTimeUnit());
 
         return toSummaryLine(meter, histogramSnapshot, total, max);
     }
@@ -194,15 +194,15 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
     Stream<String> toDistributionSummaryLine(DistributionSummary meter) {
         HistogramSnapshot histogramSnapshot = meter.takeSnapshot();
-        double total = meter.totalAmount();
-        double max = meter.max();
+        double total = histogramSnapshot.total();
+        double max = histogramSnapshot.max();
         return toSummaryLine(meter, histogramSnapshot, total, max);
     }
 
     Stream<String> toLongTaskTimerLine(LongTaskTimer meter) {
         HistogramSnapshot histogramSnapshot = meter.takeSnapshot();
-        double total = meter.duration(getBaseTimeUnit());
-        double max = meter.max(getBaseTimeUnit());
+        double total = histogramSnapshot.total(getBaseTimeUnit());
+        double max = histogramSnapshot.max(getBaseTimeUnit());
 
         return toSummaryLine(meter, histogramSnapshot, total, max);
     }
