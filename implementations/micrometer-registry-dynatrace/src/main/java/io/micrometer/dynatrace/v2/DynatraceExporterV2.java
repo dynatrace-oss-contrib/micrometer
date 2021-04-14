@@ -143,10 +143,14 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
     double minFromHistogramSnapshot(HistogramSnapshot histogramSnapshot) {
         ValueAtPercentile[] valueAtPercentiles = histogramSnapshot.percentileValues();
         double min = Double.NaN;
+
         for (ValueAtPercentile valueAtPercentile : valueAtPercentiles) {
             if (valueAtPercentile.percentile() == 0.0) {
                 min = valueAtPercentile.value();
             }
+        }
+        if (Double.isNaN(min)) {
+            logger.warn("0% quantile disabled, could not determine minimum value.");
         }
         return min;
     }
@@ -156,10 +160,10 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
         double total = histogramSnapshot.total(getBaseTimeUnit());
         double max = histogramSnapshot.max(getBaseTimeUnit());
 
-        return toSummaryLine(meter, histogramSnapshot, total, max);
+        return toSummaryLine(meter, histogramSnapshot, total, max, true);
     }
 
-    private Stream<String> toSummaryLine(Meter meter, HistogramSnapshot histogramSnapshot, double total, double max) {
+    private Stream<String> toSummaryLine(Meter meter, HistogramSnapshot histogramSnapshot, double total, double max, boolean isTimer) {
         long count = histogramSnapshot.count();
 
         double min;
@@ -167,11 +171,10 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
             min = max;
         } else {
             min = minFromHistogramSnapshot(histogramSnapshot);
-        }
-
-        if (Double.isNaN(min)) {
-            logger.warn("0% quantile disabled, could not determine minimum value.");
-            return Stream.empty();
+            if (isTimer) {
+                // it seems like percentile values for timers are recorded as nanoseconds.
+                min = min / 1_000_000;
+            }
         }
 
         List<String> serializedLine = new ArrayList<>(1);
@@ -184,7 +187,7 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
                             .setDoubleSummaryValue(min, max, total, count)
                             .serialize());
         } catch (MetricException e) {
-            logger.warn("Could not serialize metric with name {}", meter.getId().getName());
+            logger.warn(String.format("Could not serialize metric with name %s: %s", meter.getId().getName(), e.getMessage()));
         } catch (IllegalArgumentException iae) {
             logger.warn(String.format("Illegal value for metric with name %s: %s Dropping...", meter.getId().getName(), iae.getMessage()));
         }
@@ -196,7 +199,7 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
         HistogramSnapshot histogramSnapshot = meter.takeSnapshot();
         double total = histogramSnapshot.total();
         double max = histogramSnapshot.max();
-        return toSummaryLine(meter, histogramSnapshot, total, max);
+        return toSummaryLine(meter, histogramSnapshot, total, max, false);
     }
 
     Stream<String> toLongTaskTimerLine(LongTaskTimer meter) {
@@ -204,7 +207,7 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
         double total = histogramSnapshot.total(getBaseTimeUnit());
         double max = histogramSnapshot.max(getBaseTimeUnit());
 
-        return toSummaryLine(meter, histogramSnapshot, total, max);
+        return toSummaryLine(meter, histogramSnapshot, total, max, true);
     }
 
     Stream<String> toTimeGaugeLine(TimeGauge meter) {
@@ -246,7 +249,7 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
                                 .setDoubleGaugeValue(measurement.getValue())
                                 .serialize();
                     } catch (MetricException e) {
-                        logger.warn("Could not serialize metric with name {}", meter.getId().getName());
+                        logger.warn(String.format("Could not serialize metric with name %s: %s", meter.getId().getName(), e.getMessage()));
                     } catch (IllegalArgumentException iae) {
                         logger.warn(String.format("Illegal value for metric with name %s: %s Dropping...", meter.getId().getName(), iae.getMessage()));
                     }
@@ -264,7 +267,7 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
                                 .setDoubleCounterValueDelta(measurement.getValue())
                                 .serialize();
                     } catch (MetricException e) {
-                        logger.warn(String.format("could not serialize metric with name %s", meter.getId().getName()));
+                        logger.warn(String.format("Could not serialize metric with name %s: %s", meter.getId().getName(), e.getMessage()));
                     } catch (IllegalArgumentException iae) {
                         logger.warn(String.format("Illegal value for metric with name %s: %s Dropping...", meter.getId().getName(), iae.getMessage()));
                     }
@@ -281,6 +284,10 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
     }
 
     private String createMetricKey(String name, String tagValueRepresentation) {
+        if (name.endsWith(".percentile")) {
+            return null;
+        }
+
         String dynatraceTag;
         switch (tagValueRepresentation) {
             case "total":
@@ -293,6 +300,7 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
                 // drop lines that have a tag value representation of percentile.
                 // we use the 0 percentile to determine minimum values for summaries and timers
                 // so this will export 0 for every timer and summary.
+                logger.warn("dropping percentile value");
                 return null;
             default:
                 dynatraceTag = tagValueRepresentation;
