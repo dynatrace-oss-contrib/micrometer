@@ -91,7 +91,6 @@ public interface DynatraceConfig extends StepRegistryConfig {
         return getString(this, "metricKeyPrefix").orElse("");
     }
 
-    @Nullable
     default Map<String, String> defaultDimensions() {
         return Collections.emptyMap();
     }

@@ -62,13 +62,15 @@ public class DynatraceMeterRegistry extends StepMeterRegistry {
             this.exporter = new DynatraceExporterV2(config, clock, httpClient);
             registerMinPercentile();
         } else {
-            // add else if here if there are new APIs to use.
             logger.info("Exporting to Dynatrace metrics API v1");
             this.exporter = new DynatraceExporterV1(config, clock, httpClient);
         }
         start(threadFactory);
     }
 
+    // as the micrometer summary statistics (DistributionSummary, and a number of timer meter types
+    // do not provide the minimum values that are required by Dynatrace to ingest summary metrics,
+    // we add the 0% percentile to each summary statistic and use that as the minimum value.
     private void registerMinPercentile() {
         config().meterFilter(new MeterFilter() {
             @Override

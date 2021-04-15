@@ -32,6 +32,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -41,9 +42,14 @@ import java.util.stream.StreamSupport;
  */
 public class DynatraceExporterV2 extends AbstractDynatraceExporter {
     private static final String DEFAULT_ONEAGENT_ENDPOINT = "http://127.0.0.1:14499/metrics/ingest";
+
+    private static final String metricExceptionFormatter = "Could not serialize metric with name %s: %s";
+    private static final String illegalArgumentExceptionFormatter = "Illegal value for metric with name %s: %s Dropping...";
+
     private final String endpoint;
     private final MetricBuilderFactory metricBuilderFactory;
-    private final Logger logger = LoggerFactory.getLogger(DynatraceExporterV2.class.getName());
+
+    private static final Logger logger = LoggerFactory.getLogger(DynatraceExporterV2.class.getName());
     private static final Map<String, String> staticDimensions = new HashMap<String, String>() {{
         put("dt.metrics.source", "micrometer");
     }};
@@ -70,7 +76,7 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
         metricBuilderFactory = factoryBuilder.build();
     }
 
-    String prepareEndpoint(String uri) {
+    static String prepareEndpoint(String uri) {
         String endpoint = DEFAULT_ONEAGENT_ENDPOINT;
 
         if (!uri.isEmpty()) {
@@ -87,7 +93,8 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
                         endpoint = new URL(new URL(uri), "/api/v2/metrics/ingest").toString();
                     }
                 } catch (MalformedURLException e) {
-                    logger.warn("could not parse endpoint url. Falling back to local OneAgent endpoint.");
+                    logger.warn("Could not parse endpoint url ({}). The export might fail.", uri);
+                    endpoint = uri;
                 }
             }
         }
@@ -96,20 +103,26 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
         return endpoint;
     }
 
-    private DimensionList parseDefaultDimensions(Map<String, String> defaultDimensions) {
-        if (defaultDimensions == null || defaultDimensions.isEmpty()) {
-            return DimensionList.create(Dimension.create("dt.metrics.source", "micrometer"));
+    private static DimensionList parseDefaultDimensions(Map<String, String> defaultDimensions) {
+        Stream<Map.Entry<String, String>> defaultDimensionStream = Stream.empty();
+
+        if (defaultDimensions != null) {
+            defaultDimensionStream = defaultDimensions.entrySet().stream();
         }
 
-        // add the dynatrace default dimension
+        // combine static dimensions (for this implementation) and default dimensions passed
+        // via the configuration into one stream.
         Stream<Map.Entry<String, String>> concatenated = Stream.concat(
-                defaultDimensions.entrySet().stream(),
+                defaultDimensionStream,
                 staticDimensions.entrySet().stream()
         );
 
-        return DimensionList.fromCollection(concatenated.map(
+        // create dimensions from the combined stream elements.
+        List<Dimension> dimensions = concatenated.map(
                 (kv) -> Dimension.create(kv.getKey(), kv.getValue())
-        ).collect(Collectors.toList()));
+        ).collect(Collectors.toList());
+        // construct a dimensionlist from the combined diemensions.
+        return DimensionList.fromCollection(dimensions);
     }
 
     @Override
@@ -150,18 +163,22 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
         return toCounter(meter);
     }
 
-    double minFromHistogramSnapshot(HistogramSnapshot histogramSnapshot) {
-        ValueAtPercentile[] valueAtPercentiles = histogramSnapshot.percentileValues();
+    static double minFromHistogramSnapshot(HistogramSnapshot histogramSnapshot, TimeUnit timeUnit) {
+        ValueAtPercentile[] valuesAtPercentiles = histogramSnapshot.percentileValues();
         double min = Double.NaN;
 
-        for (ValueAtPercentile valueAtPercentile : valueAtPercentiles) {
+        for (ValueAtPercentile valueAtPercentile : valuesAtPercentiles) {
             if (valueAtPercentile.percentile() == 0.0) {
-                min = valueAtPercentile.value();
+                if (timeUnit == null) {
+                    // not a timer value, probably a DistributionSummary
+                    min = valueAtPercentile.value();
+                } else {
+                    min = valueAtPercentile.value(timeUnit);
+                }
+                break;
             }
         }
-        if (Double.isNaN(min)) {
-            logger.warn("0% quantile disabled, could not determine minimum value.");
-        }
+
         return min;
     }
 
@@ -180,10 +197,10 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
         if (count == 1) {
             min = max;
         } else {
-            min = minFromHistogramSnapshot(histogramSnapshot);
             if (isTimer) {
-                // it seems like percentile values for timers are recorded as nanoseconds.
-                min = min / 1_000_000;
+                min = minFromHistogramSnapshot(histogramSnapshot, getBaseTimeUnit());
+            } else {
+                min = minFromHistogramSnapshot(histogramSnapshot, null);
             }
         }
 
@@ -197,9 +214,9 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
                             .setDoubleSummaryValue(min, max, total, count)
                             .serialize());
         } catch (MetricException e) {
-            logger.warn(String.format("Could not serialize metric with name %s: %s", meter.getId().getName(), e.getMessage()));
+            logger.warn(String.format(metricExceptionFormatter, meter.getId().getName(), e.getMessage()));
         } catch (IllegalArgumentException iae) {
-            logger.warn(String.format("Illegal value for metric with name %s: %s Dropping...", meter.getId().getName(), iae.getMessage()));
+            logger.warn(String.format(illegalArgumentExceptionFormatter, meter.getId().getName(), iae.getMessage()));
         }
 
         return streamOf(serializedLine);
@@ -209,6 +226,7 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
         HistogramSnapshot histogramSnapshot = meter.takeSnapshot();
         double total = histogramSnapshot.total();
         double max = histogramSnapshot.max();
+
         return toSummaryLine(meter, histogramSnapshot, total, max, false);
     }
 
@@ -250,7 +268,7 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
                 measurement -> {
                     try {
                         throwIfValueIsInvalid(measurement.getValue());
-                        String metricKey = createMetricKey(meter.getId().getName(),
+                        String metricKey = createGaugeMetricKey(meter.getId().getName(),
                                 measurement.getStatistic().getTagValueRepresentation());
                         if (metricKey == null) {
                             return null;
@@ -259,9 +277,9 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
                                 .setDoubleGaugeValue(measurement.getValue())
                                 .serialize();
                     } catch (MetricException e) {
-                        logger.warn(String.format("Could not serialize metric with name %s: %s", meter.getId().getName(), e.getMessage()));
+                        logger.warn(String.format(metricExceptionFormatter, meter.getId().getName(), e.getMessage()));
                     } catch (IllegalArgumentException iae) {
-                        logger.warn(String.format("Illegal value for metric with name %s: %s Dropping...", meter.getId().getName(), iae.getMessage()));
+                        logger.warn(String.format(illegalArgumentExceptionFormatter, meter.getId().getName(), iae.getMessage()));
                     }
                     return null;
                 })
@@ -277,9 +295,9 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
                                 .setDoubleCounterValueDelta(measurement.getValue())
                                 .serialize();
                     } catch (MetricException e) {
-                        logger.warn(String.format("Could not serialize metric with name %s: %s", meter.getId().getName(), e.getMessage()));
+                        logger.warn(String.format(metricExceptionFormatter, meter.getId().getName(), e.getMessage()));
                     } catch (IllegalArgumentException iae) {
-                        logger.warn(String.format("Illegal value for metric with name %s: %s Dropping...", meter.getId().getName(), iae.getMessage()));
+                        logger.warn(String.format(illegalArgumentExceptionFormatter, meter.getId().getName(), iae.getMessage()));
                     }
                     return null;
                 })
@@ -293,8 +311,9 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
                 .setTimestamp(Instant.ofEpochMilli(clock.wallTime()));
     }
 
-    private String createMetricKey(String name, String tagValueRepresentation) {
+    private static String createGaugeMetricKey(String name, String tagValueRepresentation) {
         if (name.endsWith(".percentile")) {
+            logger.warn("dropping percentile value of metric with name {}", name);
             return null;
         }
 
@@ -310,7 +329,7 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
                 // drop lines that have a tag value representation of percentile.
                 // we use the 0 percentile to determine minimum values for summaries and timers
                 // so this will export 0 for every timer and summary.
-                logger.warn("dropping percentile value");
+                logger.warn("dropping percentile value of metric with name {}", name);
                 return null;
             default:
                 dynatraceTag = tagValueRepresentation;
@@ -323,10 +342,10 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
         return String.format("%s.%s", name, dynatraceTag);
     }
 
-    private DimensionList fromTags(List<Tag> tags) {
+    private static DimensionList fromTags(List<Tag> tags) {
         return DimensionList.fromCollection(
                 tags.stream()
-                        .map(x -> Dimension.create(x.getKey(), x.getValue()))
+                        .map(tag -> Dimension.create(tag.getKey(), tag.getValue()))
                         .collect(Collectors.toList()));
     }
 
@@ -336,15 +355,17 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
     private void send(List<String> metricLines) {
         try {
-            String body = metricLines.stream().collect(Collectors.joining(System.lineSeparator()));
-            logger.debug("sending lines:\n" + body);
+            String body = String.join("\n", metricLines);
+            if (logger.isDebugEnabled()) {
+                logger.debug("sending lines:\n" + body);
+            }
 
             httpClient.post(endpoint)
                     .withHeader("Authorization", "Api-Token " + config.apiToken())
                     .withPlainText(body)
                     .send()
                     .onSuccess((r) -> logger.info("Ingested {} metric lines into Dynatrace, response: {}", metricLines.size(), r.body()))
-                    .onError((r) -> logger.error("Failed metric ingestion. code={} body={}", r.code(), r.body()));
+                    .onError((r) -> logger.error("Failed metric ingestion. code={} response.body={}", r.code(), r.body()));
         } catch (Throwable throwable) {
             logger.error("Failed metric ingestion: {}", throwable.getMessage());
         }

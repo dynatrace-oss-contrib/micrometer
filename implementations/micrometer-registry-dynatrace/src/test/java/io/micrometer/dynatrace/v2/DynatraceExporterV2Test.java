@@ -350,13 +350,16 @@ class DynatraceExporterV2Test {
     void prepareEndpoint() {
         assertThat(exporter.prepareEndpoint("")).isEqualTo("http://127.0.0.1:14499/metrics/ingest");
 
-        assertThat(exporter.prepareEndpoint("http://localhost:13333")).isEqualTo("http://localhost:13333/metrics/ingest");
+        assertThat(exporter.prepareEndpoint("http://127.0.0.1:14499")).isEqualTo("http://127.0.0.1:14499/metrics/ingest");
+        assertThat(exporter.prepareEndpoint("http://127.0.0.1:14499/")).isEqualTo("http://127.0.0.1:14499/metrics/ingest");
 
+        assertThat(exporter.prepareEndpoint("http://localhost:13333")).isEqualTo("http://localhost:13333/metrics/ingest");
         assertThat(exporter.prepareEndpoint("http://127.0.0.1:13333")).isEqualTo("http://127.0.0.1:13333/metrics/ingest");
 
         assertThat(exporter.prepareEndpoint("http://localhost:13333/metrics/ingest")).isEqualTo("http://localhost:13333/metrics/ingest");
 
         assertThat(exporter.prepareEndpoint("https://XXXXXXX.live.dynatrace.com")).isEqualTo("https://XXXXXXX.live.dynatrace.com/api/v2/metrics/ingest");
+        assertThat(exporter.prepareEndpoint("https://XXXXXXX.live.dynatrace.com/")).isEqualTo("https://XXXXXXX.live.dynatrace.com/api/v2/metrics/ingest");
 
         assertThat(exporter.prepareEndpoint("https://XXXXXXX.live.dynatrace.com/api/v2/metrics/ingest")).isEqualTo("https://XXXXXXX.live.dynatrace.com/api/v2/metrics/ingest");
     }
