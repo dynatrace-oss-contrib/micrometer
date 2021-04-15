@@ -129,4 +129,13 @@ public interface DynatraceConfig extends StepRegistryConfig {
                         })
         );
     }
+    
+    default Validated<?> validateV2() {
+        return checkAll(this,
+                c -> StepRegistryConfig.validate(c),
+                checkRequired("apiVersion", DynatraceConfig::apiVersion),
+                check("apiToken", DynatraceConfig::apiToken)
+                        .andThen(v -> v.invalidateWhen(x -> checkRequired("uri", DynatraceConfig::uri).apply(this).isInvalid(), "when using an API token, the endpoint URI is required", InvalidReason.MISSING))
+        );
+    }
 }
