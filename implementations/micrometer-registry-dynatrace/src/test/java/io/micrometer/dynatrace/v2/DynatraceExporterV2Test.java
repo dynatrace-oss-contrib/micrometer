@@ -345,4 +345,19 @@ class DynatraceExporterV2Test {
         assertThat(actual.get(0)).startsWith("my.counter,");
         assertThat(actual.get(0)).hasSize("my.counter,tag1=value1,dt.metrics.source=micrometer,tag2=value2 count,delta=0 1617796526714".length());
     }
+
+    @Test
+    void prepareEndpoint() {
+        assertThat(exporter.prepareEndpoint("")).isEqualTo("http://127.0.0.1:14499/metrics/ingest");
+
+        assertThat(exporter.prepareEndpoint("http://localhost:13333")).isEqualTo("http://localhost:13333/metrics/ingest");
+
+        assertThat(exporter.prepareEndpoint("http://127.0.0.1:13333")).isEqualTo("http://127.0.0.1:13333/metrics/ingest");
+
+        assertThat(exporter.prepareEndpoint("http://localhost:13333/metrics/ingest")).isEqualTo("http://localhost:13333/metrics/ingest");
+
+        assertThat(exporter.prepareEndpoint("https://XXXXXXX.live.dynatrace.com")).isEqualTo("https://XXXXXXX.live.dynatrace.com/api/v2/metrics/ingest");
+
+        assertThat(exporter.prepareEndpoint("https://XXXXXXX.live.dynatrace.com/api/v2/metrics/ingest")).isEqualTo("https://XXXXXXX.live.dynatrace.com/api/v2/metrics/ingest");
+    }
 }

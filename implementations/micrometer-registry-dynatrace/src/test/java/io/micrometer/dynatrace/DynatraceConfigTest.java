@@ -107,15 +107,18 @@ class DynatraceConfigTest {
     }
 
     @Test
-    void testDefaultOneAgentEndpoint() {
+    void testV2Defaults() {
         Map<String, String> properties = new HashMap<String, String>() {{
             put("dynatrace.apiVersion", "v2");
         }};
-
         DynatraceConfig config = properties::get;
-        assertThat(config.apiToken()).isNull();
-        assertThat(config.uri()).isEqualTo("http://localhost:14499");
+
         assertThat(config.apiVersion()).isEqualTo(DynatraceApiVersion.V2);
+        assertThat(config.apiToken()).isEmpty();
+        assertThat(config.uri()).isEmpty();
+        assertThat(config.metricKeyPrefix()).isEmpty();
+        assertThat(config.defaultDimensions()).isEmpty();
+        assertThat(config.enrichWithOneAgentMetadata()).isFalse();
 
         Validated<?> validated = config.validate();
         assertThat(validated.isValid()).isTrue();
@@ -125,12 +128,12 @@ class DynatraceConfigTest {
     void testOneAgentEndpointWithDifferentPort() {
         Map<String, String> properties = new HashMap<String, String>() {{
             put("dynatrace.apiVersion", "v2");
-            put("dynatrace.uri", "http://localhost:13333");
+            put("dynatrace.uri", "http://localhost:13333/metrics/ingest");
         }};
-
         DynatraceConfig config = properties::get;
-        assertThat(config.apiToken()).isNull();
-        assertThat(config.uri()).isEqualTo("http://localhost:13333");
+
+        assertThat(config.apiToken()).isEmpty();
+        assertThat(config.uri()).isEqualTo("http://localhost:13333/metrics/ingest");
         assertThat(config.apiVersion()).isEqualTo(DynatraceApiVersion.V2);
 
         Validated<?> validated = config.validate();
@@ -138,7 +141,7 @@ class DynatraceConfigTest {
     }
 
     @Test
-    void testV2requiredProperties() {
+    void testV2requiredPropertiesWithEndpointAndToken() {
         Map<String, String> properties = new HashMap<String, String>() {{
             put("dynatrace.apiVersion", "v2");
             put("dynatrace.uri", "https://uri.dynatrace.com");

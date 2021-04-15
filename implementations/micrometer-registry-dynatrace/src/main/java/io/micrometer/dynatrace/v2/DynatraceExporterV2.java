@@ -40,6 +40,7 @@ import java.util.stream.StreamSupport;
  * @author Georg Pirklbauer
  */
 public class DynatraceExporterV2 extends AbstractDynatraceExporter {
+    private static final String DEFAULT_ONEAGENT_ENDPOINT = "http://127.0.0.1:14499/metrics/ingest";
     private final String endpoint;
     private final MetricBuilderFactory metricBuilderFactory;
     private final Logger logger = LoggerFactory.getLogger(DynatraceExporterV2.class.getName());
@@ -52,8 +53,7 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
     public DynatraceExporterV2(DynatraceConfig config, Clock clock, HttpSender httpClient) {
         super(config, clock, httpClient);
 
-        this.endpoint = prepareEndpoint(config);
-        logger.debug(String.format("exporting to endpoint %s", endpoint));
+        this.endpoint = prepareEndpoint(config.uri());
 
         MetricBuilderFactory.MetricBuilderFactoryBuilder factoryBuilder = MetricBuilderFactory
                 .builder()
@@ -70,19 +70,29 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
         metricBuilderFactory = factoryBuilder.build();
     }
 
-    private String prepareEndpoint(DynatraceConfig config) {
-        String endpoint;
+    String prepareEndpoint(String uri) {
+        String endpoint = DEFAULT_ONEAGENT_ENDPOINT;
 
-        if (config.uri().matches("/metrics/ingest/?$")) {
-            endpoint = config.uri();
-        } else {
-            try {
-                endpoint = new URL(new URL(config.uri()), "/api/v2/metrics/ingest").toString();
-            } catch (MalformedURLException e) {
-                logger.warn("could not parse endpoint url. Falling back to local OneAgent endpoint.");
-                endpoint = "http://127.0.0.1:14499/metrics/ingest";
+        if (!uri.isEmpty()) {
+            // ends with "/metrics/ingest" or "/metrics/ingest/"
+            if (uri.matches(".+/metrics/ingest/?$")) {
+                endpoint = uri;
+            } else {
+                try {
+                    if (uri.contains("localhost") || uri.contains("127.0.0.1")) {
+                        // append /metrics/ingest for local endpoints if not already there.
+                        endpoint = new URL(new URL(uri), "/metrics/ingest").toString();
+                    } else {
+                        // append /api/v2/metrics/ingest to the uri if its not already there.
+                        endpoint = new URL(new URL(uri), "/api/v2/metrics/ingest").toString();
+                    }
+                } catch (MalformedURLException e) {
+                    logger.warn("could not parse endpoint url. Falling back to local OneAgent endpoint.");
+                }
             }
         }
+
+        logger.info(String.format("exporting to endpoint %s", endpoint));
         return endpoint;
     }
 

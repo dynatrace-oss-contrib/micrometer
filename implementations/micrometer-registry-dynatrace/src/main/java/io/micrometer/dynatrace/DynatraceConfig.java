@@ -44,7 +44,7 @@ public interface DynatraceConfig extends StepRegistryConfig {
         if (apiVersion() == DynatraceApiVersion.V1) {
             return getSecret(this, "apiToken").required().get();
         }
-        return getSecret(this, "apiToken").orElse(null);
+        return getSecret(this, "apiToken").orElse("");
     }
 
     default String uri() {
@@ -53,7 +53,7 @@ public interface DynatraceConfig extends StepRegistryConfig {
         if (apiVersion() == DynatraceApiVersion.V1) {
             return getUrlString(this, "uri").required().get();
         }
-        return getUrlString(this, "uri").orElse("http://localhost:14499");
+        return getUrlString(this, "uri").orElse("");
     }
 
     default String deviceId() {
@@ -129,12 +129,17 @@ public interface DynatraceConfig extends StepRegistryConfig {
                         })
         );
     }
-    
+
     default Validated<?> validateV2() {
+        // v2 is only invalid when an API token is given but no URL
         return checkAll(this,
                 c -> StepRegistryConfig.validate(c),
                 check("apiToken", DynatraceConfig::apiToken)
-                        .andThen(v -> v.invalidateWhen(x -> checkRequired("uri", DynatraceConfig::uri).apply(this).isInvalid(), "when using an API token, the endpoint URI is required", InvalidReason.MISSING))
+                        .andThen(v -> v.invalidateWhen(x ->
+                                        !apiToken().isEmpty() &&
+                                        checkRequired("uri", DynatraceConfig::uri).apply(this).isValid() &&
+                                        uri().isEmpty(),
+                                "when using an API token, the endpoint URI is required", InvalidReason.MISSING))
         );
     }
 }
