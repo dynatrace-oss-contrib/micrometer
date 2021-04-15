@@ -44,7 +44,7 @@ public interface DynatraceConfig extends StepRegistryConfig {
         if (apiVersion() == DynatraceApiVersion.V1) {
             return getSecret(this, "apiToken").required().get();
         }
-        return getSecret(this, "apiToken").orElse("NO_TOKEN_SET");
+        return getSecret(this, "apiToken").orElse(null);
     }
 
     default String uri() {
@@ -133,7 +133,6 @@ public interface DynatraceConfig extends StepRegistryConfig {
     default Validated<?> validateV2() {
         return checkAll(this,
                 c -> StepRegistryConfig.validate(c),
-                checkRequired("apiVersion", DynatraceConfig::apiVersion),
                 check("apiToken", DynatraceConfig::apiToken)
                         .andThen(v -> v.invalidateWhen(x -> checkRequired("uri", DynatraceConfig::uri).apply(this).isInvalid(), "when using an API token, the endpoint URI is required", InvalidReason.MISSING))
         );

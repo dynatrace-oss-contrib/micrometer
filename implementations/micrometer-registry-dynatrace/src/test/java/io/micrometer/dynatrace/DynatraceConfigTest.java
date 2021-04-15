@@ -113,7 +113,7 @@ class DynatraceConfigTest {
         }};
 
         DynatraceConfig config = properties::get;
-        assertThat(config.apiToken()).isEqualTo("NO_TOKEN_SET");
+        assertThat(config.apiToken()).isNull();
         assertThat(config.uri()).isEqualTo("http://localhost:14499");
         assertThat(config.apiVersion()).isEqualTo(DynatraceApiVersion.V2);
 
@@ -129,7 +129,7 @@ class DynatraceConfigTest {
         }};
 
         DynatraceConfig config = properties::get;
-        assertThat(config.apiToken()).isEqualTo("NO_TOKEN_SET");
+        assertThat(config.apiToken()).isNull();
         assertThat(config.uri()).isEqualTo("http://localhost:13333");
         assertThat(config.apiVersion()).isEqualTo(DynatraceApiVersion.V2);
 
