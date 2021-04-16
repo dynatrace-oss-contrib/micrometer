@@ -231,11 +231,11 @@ class DynatraceExporterV2Test {
     @Test
     void toFunctionTimerLine() {
         class TestClass {
-            long time() {
+            long timeSomething() {
                 return 3L;
             }
 
-            double total() {
+            double doSomething() {
                 return 5.3;
             }
 
@@ -243,15 +243,14 @@ class DynatraceExporterV2Test {
         }
 
         TestClass tester = new TestClass();
-        FunctionTimer.builder("my.function.timer", tester, TestClass::time, TestClass::total, tester.unit).register(meterRegistry);
+        FunctionTimer.builder("my.function.timer", tester, TestClass::timeSomething, TestClass::doSomething, tester.unit).register(meterRegistry);
         FunctionTimer functionTimer = meterRegistry.find("my.function.timer").functionTimer();
         assertNotNull(functionTimer);
 
-
         List<String> actual = exporter.toFunctionTimerLine(functionTimer).collect(Collectors.toList());
-        assertThat(actual).hasSize(2);
-        assertThat(actual.get(0)).startsWith("my.function.timer.count,dt.metrics.source=micrometer gauge,");
-        assertThat(actual.get(1)).startsWith("my.function.timer.sum,dt.metrics.source=micrometer gauge,");
+        assertThat(actual).hasSize(1);
+        assertThat(actual.get(0)).startsWith("my.function.timer,dt.metrics.source=micrometer gauge,");
+        assertThat(actual.get(0)).contains("min=").contains("max=").contains("sum=").contains("count=");
     }
 
     @Test

@@ -188,21 +188,8 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
         return toSummaryLine(meter, histogramSnapshot, total, max, true);
     }
-
-    private Stream<String> toSummaryLine(Meter meter, HistogramSnapshot histogramSnapshot, double total, double max, boolean isTimer) {
-        long count = histogramSnapshot.count();
-
-        double min;
-        if (count == 1) {
-            min = max;
-        } else {
-            if (isTimer) {
-                min = minFromHistogramSnapshot(histogramSnapshot, getBaseTimeUnit());
-            } else {
-                min = minFromHistogramSnapshot(histogramSnapshot, null);
-            }
-        }
-
+    
+    private Stream<String> makeSummaryLine(Meter meter, double min, double max, double total, long count) {
         List<String> serializedLine = new ArrayList<>(1);
         try {
             throwIfValueIsInvalid(max);
@@ -219,6 +206,23 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
         }
 
         return streamOf(serializedLine);
+    }
+
+    private Stream<String> toSummaryLine(Meter meter, HistogramSnapshot histogramSnapshot, double total, double max, boolean isTimer) {
+        long count = histogramSnapshot.count();
+
+        double min;
+        if (count == 1) {
+            min = max;
+        } else {
+            if (isTimer) {
+                min = minFromHistogramSnapshot(histogramSnapshot, getBaseTimeUnit());
+            } else {
+                min = minFromHistogramSnapshot(histogramSnapshot, null);
+            }
+        }
+
+        return makeSummaryLine(meter, min, max, total, count);
     }
 
     Stream<String> toDistributionSummaryLine(DistributionSummary meter) {
@@ -246,7 +250,12 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
     }
 
     Stream<String> toFunctionTimerLine(FunctionTimer meter) {
-        return toGauge(meter);
+        double total = meter.totalTime(getBaseTimeUnit());
+        double average = meter.mean(getBaseTimeUnit());
+        long longCount = Double.valueOf(meter.count()).longValue();
+        
+        return makeSummaryLine(meter, average, average, total, longCount);
+//        return toGauge(meter);
     }
 
     Stream<String> toMeterLine(Meter meter) {
