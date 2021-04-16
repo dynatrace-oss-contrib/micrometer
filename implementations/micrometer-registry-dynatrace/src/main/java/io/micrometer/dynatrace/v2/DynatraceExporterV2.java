@@ -42,11 +42,10 @@ import java.util.stream.StreamSupport;
  */
 public class DynatraceExporterV2 extends AbstractDynatraceExporter {
     private static final String DEFAULT_ONEAGENT_ENDPOINT = "http://127.0.0.1:14499/metrics/ingest";
+    private static final int MAX_BATCH_SIZE = 1000;
 
     private static final String metricExceptionFormatter = "Could not serialize metric with name %s: %s";
     private static final String illegalArgumentExceptionFormatter = "Illegal value for metric with name %s: %s Dropping...";
-
-    private static final int MAX_BATCH_SIZE = 1000;
 
     private final String endpoint;
     private final MetricBuilderFactory metricBuilderFactory;
@@ -202,7 +201,8 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
         } catch (MetricException e) {
             logger.warn(String.format(metricExceptionFormatter, meter.getId().getName(), e.getMessage()));
         } catch (IllegalArgumentException iae) {
-            logger.warn(String.format(illegalArgumentExceptionFormatter, meter.getId().getName(), iae.getMessage()));
+            // drop lines containing NaN or Infinity silently.
+            logger.debug(String.format(illegalArgumentExceptionFormatter, meter.getId().getName(), iae.getMessage()));
         }
 
         return streamOf(serializedLine);
@@ -255,7 +255,6 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
         long longCount = Double.valueOf(meter.count()).longValue();
         
         return makeSummaryLine(meter, average, average, total, longCount);
-//        return toGauge(meter);
     }
 
     Stream<String> toMeterLine(Meter meter) {
@@ -280,9 +279,10 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
                                 .setDoubleGaugeValue(measurement.getValue())
                                 .serialize();
                     } catch (MetricException e) {
+                        // drop lines containing NaN or Infinity silently.
                         logger.warn(String.format(metricExceptionFormatter, meter.getId().getName(), e.getMessage()));
                     } catch (IllegalArgumentException iae) {
-                        logger.warn(String.format(illegalArgumentExceptionFormatter, meter.getId().getName(), iae.getMessage()));
+                        logger.debug(String.format(illegalArgumentExceptionFormatter, meter.getId().getName(), iae.getMessage()));
                     }
                     return null;
                 })
@@ -298,9 +298,10 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
                                 .setDoubleCounterValueDelta(measurement.getValue())
                                 .serialize();
                     } catch (MetricException e) {
+                        // drop lines containing NaN or Infinity silently.
                         logger.warn(String.format(metricExceptionFormatter, meter.getId().getName(), e.getMessage()));
                     } catch (IllegalArgumentException iae) {
-                        logger.warn(String.format(illegalArgumentExceptionFormatter, meter.getId().getName(), iae.getMessage()));
+                        logger.debug(String.format(illegalArgumentExceptionFormatter, meter.getId().getName(), iae.getMessage()));
                     }
                     return null;
                 })
@@ -346,7 +347,7 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
     }
 
     private void sendInBatches(List<String> metricLines) {
-        MetricLinePartition.partition(metricLines, MAX_BATCH_SIZE)
+        MetricLinePartition.partition(metricLines)
                 .forEach(this::send);
     }
 
@@ -360,8 +361,8 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
             super(list, partitionSize);
         }
 
-        static List<List<String>> partition(List<String> list, int partitionSize) {
-            return new MetricLinePartition(list, partitionSize);
+        static List<List<String>> partition(List<String> list) {
+            return new MetricLinePartition(list, MAX_BATCH_SIZE);
         }
     }
 }
