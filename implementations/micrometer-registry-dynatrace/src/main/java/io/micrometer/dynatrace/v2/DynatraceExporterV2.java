@@ -46,6 +46,8 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
     private static final String metricExceptionFormatter = "Could not serialize metric with name %s: %s";
     private static final String illegalArgumentExceptionFormatter = "Illegal value for metric with name %s: %s Dropping...";
 
+    private static final int MAX_BATCH_SIZE = 1000;
+
     private final String endpoint;
     private final MetricBuilderFactory metricBuilderFactory;
 
@@ -63,11 +65,8 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
         MetricBuilderFactory.MetricBuilderFactoryBuilder factoryBuilder = MetricBuilderFactory
                 .builder()
-                .withPrefix(config.metricKeyPrefix());
-
-        if (config.defaultDimensions() != null) {
-            factoryBuilder.withDefaultDimensions(parseDefaultDimensions(config.defaultDimensions()));
-        }
+                .withPrefix(config.metricKeyPrefix())
+                .withDefaultDimensions(parseDefaultDimensions(config.defaultDimensions()));
 
         if (config.enrichWithOneAgentMetadata()) {
             factoryBuilder.withOneAgentMetadata();
@@ -210,7 +209,7 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
             throwIfValueIsInvalid(total);
 
             serializedLine.add(
-                    createMetricBuilder(meter, meter.getId().getName())
+                    createMetricBuilder(meter)
                             .setDoubleSummaryValue(min, max, total, count)
                             .serialize());
         } catch (MetricException e) {
@@ -268,12 +267,7 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
                 measurement -> {
                     try {
                         throwIfValueIsInvalid(measurement.getValue());
-                        String metricKey = createGaugeMetricKey(meter.getId().getName(),
-                                measurement.getStatistic().getTagValueRepresentation());
-                        if (metricKey == null) {
-                            return null;
-                        }
-                        return createMetricBuilder(meter, metricKey)
+                        return createMetricBuilder(meter)
                                 .setDoubleGaugeValue(measurement.getValue())
                                 .serialize();
                     } catch (MetricException e) {
@@ -291,7 +285,7 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
                 measurement -> {
                     try {
                         throwIfValueIsInvalid(measurement.getValue());
-                        return createMetricBuilder(meter, meter.getId().getName())
+                        return createMetricBuilder(meter)
                                 .setDoubleCounterValueDelta(measurement.getValue())
                                 .serialize();
                     } catch (MetricException e) {
@@ -304,42 +298,11 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
                 .filter(Objects::nonNull);
     }
 
-    private Metric.Builder createMetricBuilder(Meter meter, String metricKey) {
+    private Metric.Builder createMetricBuilder(Meter meter) {
         return metricBuilderFactory
-                .newMetricBuilder(metricKey)
+                .newMetricBuilder(meter.getId().getName())
                 .setDimensions(fromTags(meter.getId().getTags()))
                 .setTimestamp(Instant.ofEpochMilli(clock.wallTime()));
-    }
-
-    private static String createGaugeMetricKey(String name, String tagValueRepresentation) {
-        if (name.endsWith(".percentile")) {
-            logger.warn("dropping percentile value of metric with name {}", name);
-            return null;
-        }
-
-        String dynatraceTag;
-        switch (tagValueRepresentation) {
-            case "total":
-                dynatraceTag = "sum";
-                break;
-            case "value":
-                dynatraceTag = "";
-                break;
-            case "percentile":
-                // drop lines that have a tag value representation of percentile.
-                // we use the 0 percentile to determine minimum values for summaries and timers
-                // so this will export 0 for every timer and summary.
-                logger.warn("dropping percentile value of metric with name {}", name);
-                return null;
-            default:
-                dynatraceTag = tagValueRepresentation;
-                break;
-        }
-
-        if (dynatraceTag.isEmpty()) {
-            return name;
-        }
-        return String.format("%s.%s", name, dynatraceTag);
     }
 
     private static DimensionList fromTags(List<Tag> tags) {
@@ -362,6 +325,8 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
             httpClient.post(endpoint)
                     .withHeader("Authorization", "Api-Token " + config.apiToken())
+                    .withHeader("Content-Type", "text/plain")
+                    .withHeader("User-Agent", "micrometer")
                     .withPlainText(body)
                     .send()
                     .onSuccess((r) -> logger.info("Ingested {} metric lines into Dynatrace, response: {}", metricLines.size(), r.body()))
@@ -372,7 +337,7 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
     }
 
     private void sendInBatches(List<String> metricLines) {
-        MetricLinePartition.partition(metricLines, config.batchSize())
+        MetricLinePartition.partition(metricLines, MAX_BATCH_SIZE)
                 .forEach(this::send);
     }
 
