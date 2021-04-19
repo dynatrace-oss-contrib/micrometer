@@ -40,7 +40,7 @@ import java.util.stream.StreamSupport;
 /**
  * @author Georg Pirklbauer
  */
-public class DynatraceExporterV2 extends AbstractDynatraceExporter {
+public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     private static final String DEFAULT_ONEAGENT_ENDPOINT = "http://127.0.0.1:14499/metrics/ingest";
     private static final int MAX_BATCH_SIZE = 1000;
 
@@ -187,7 +187,7 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
         return toSummaryLine(meter, histogramSnapshot, total, max, true);
     }
-    
+
     private Stream<String> makeSummaryLine(Meter meter, double min, double max, double total, long count) {
         List<String> serializedLine = new ArrayList<>(1);
         try {
@@ -253,7 +253,7 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
         double total = meter.totalTime(getBaseTimeUnit());
         double average = meter.mean(getBaseTimeUnit());
         long longCount = Double.valueOf(meter.count()).longValue();
-        
+
         return makeSummaryLine(meter, average, average, total, longCount);
     }
 
@@ -279,9 +279,9 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
                                 .setDoubleGaugeValue(measurement.getValue())
                                 .serialize();
                     } catch (MetricException e) {
-                        // drop lines containing NaN or Infinity silently.
                         logger.warn(String.format(metricExceptionFormatter, meter.getId().getName(), e.getMessage()));
                     } catch (IllegalArgumentException iae) {
+                        // drop lines containing NaN or Infinity silently.
                         logger.debug(String.format(illegalArgumentExceptionFormatter, meter.getId().getName(), iae.getMessage()));
                     }
                     return null;
@@ -298,9 +298,9 @@ public class DynatraceExporterV2 extends AbstractDynatraceExporter {
                                 .setDoubleCounterValueDelta(measurement.getValue())
                                 .serialize();
                     } catch (MetricException e) {
-                        // drop lines containing NaN or Infinity silently.
                         logger.warn(String.format(metricExceptionFormatter, meter.getId().getName(), e.getMessage()));
                     } catch (IllegalArgumentException iae) {
+                        // drop lines containing NaN or Infinity silently.
                         logger.debug(String.format(illegalArgumentExceptionFormatter, meter.getId().getName(), iae.getMessage()));
                     }
                     return null;

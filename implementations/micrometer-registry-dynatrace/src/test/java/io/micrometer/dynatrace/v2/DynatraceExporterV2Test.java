@@ -17,6 +17,7 @@
 package io.micrometer.dynatrace.v2;
 
 import io.micrometer.core.instrument.*;
+import io.micrometer.core.instrument.step.StepTimer;
 import io.micrometer.core.ipc.http.HttpSender;
 import io.micrometer.dynatrace.DynatraceApiVersion;
 import io.micrometer.dynatrace.DynatraceConfig;
@@ -128,11 +129,11 @@ class DynatraceExporterV2Test {
         counter.increment();
         counter.increment();
 
-        String expected = String.format("my.counter,dt.metrics.source=micrometer count,delta=%.0f ", counter.count());
+        String expected = String.format("my.counter,dt.metrics.source=micrometer count,delta=%s ", String.valueOf(counter.count()));
         List<String> actual = exporter.toCounterLine(counter).collect(Collectors.toList());
         assertThat(actual).hasSize(1);
         String actualLine = actual.get(0);
-        String expectedDummy = "my.counter,dt.metrics.source=micrometer count,delta=3 1617714022879";
+        String expectedDummy = "my.counter,dt.metrics.source=micrometer count,delta=0.0 1617714022879";
         assertThat(actualLine).hasSize(expectedDummy.length());
         assertThat(actualLine).startsWith(expected);
     }
@@ -224,33 +225,40 @@ class DynatraceExporterV2Test {
 
         List<String> actual = exporter.toFunctionCounterLine(functionCounter).collect(Collectors.toList());
         assertThat(actual).hasSize(1);
-        assertThat(actual.get(0)).hasSize("my.function.counter,dt.metrics.source=micrometer count,delta=0 1617776498381".length());
+        assertThat(actual.get(0)).hasSize("my.function.counter,dt.metrics.source=micrometer count,delta=0.0 1617776498381".length());
         assertThat(actual.get(0)).startsWith("my.function.counter,dt.metrics.source=micrometer count,delta=");
     }
 
     @Test
     void toFunctionTimerLine() {
-        class TestClass {
-            long timeSomething() {
-                return 3L;
+        class FunctionTimerDummy implements FunctionTimer {
+            @Override
+            public double count() {
+                return 500.5;
             }
 
-            double doSomething() {
-                return 5.3;
+            @Override
+            public double totalTime(TimeUnit unit) {
+                return 5005;
             }
 
-            final TimeUnit unit = TimeUnit.MILLISECONDS;
+            @Override
+            public TimeUnit baseTimeUnit() {
+                return TimeUnit.MILLISECONDS;
+            }
+
+            @Override
+            public Id getId() {
+                return  new Id("my.function.timer", Tags.empty(), null, null, Type.TIMER);
+            }
         }
-
-        TestClass tester = new TestClass();
-        FunctionTimer.builder("my.function.timer", tester, TestClass::timeSomething, TestClass::doSomething, tester.unit).register(meterRegistry);
-        FunctionTimer functionTimer = meterRegistry.find("my.function.timer").functionTimer();
-        assertNotNull(functionTimer);
-
-        List<String> actual = exporter.toFunctionTimerLine(functionTimer).collect(Collectors.toList());
+        
+        FunctionTimerDummy cut = new FunctionTimerDummy();
+        
+        List<String> actual = exporter.toFunctionTimerLine(cut).collect(Collectors.toList());
         assertThat(actual).hasSize(1);
-        assertThat(actual.get(0)).startsWith("my.function.timer,dt.metrics.source=micrometer gauge,");
-        assertThat(actual.get(0)).contains("min=").contains("max=").contains("sum=").contains("count=");
+        assertThat(actual.get(0)).startsWith("my.function.timer,dt.metrics.source=micrometer gauge,min=10.0,max=10.0,sum=5005.0,count=500 ");
+        assertThat(actual.get(0)).hasSize("my.function.timer,dt.metrics.source=micrometer gauge,min=10.0,max=10.0,sum=5005.0,count=500 1234567890123".length());
     }
 
     @Test
@@ -342,7 +350,7 @@ class DynatraceExporterV2Test {
         assertThat(actual).hasSize(1);
         assertThat(actual.get(0)).contains("tag1=value1").contains("tag2=value2").contains("dt.metrics.source=micrometer");
         assertThat(actual.get(0)).startsWith("my.counter,");
-        assertThat(actual.get(0)).hasSize("my.counter,tag1=value1,dt.metrics.source=micrometer,tag2=value2 count,delta=0 1617796526714".length());
+        assertThat(actual.get(0)).hasSize("my.counter,tag1=value1,dt.metrics.source=micrometer,tag2=value2 count,delta=0.0 1617796526714".length());
     }
 
     @Test
