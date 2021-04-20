@@ -161,10 +161,8 @@ class DynatraceExporterV2Test {
 
         List<String> actual = exporter.toTimerLine(timer).collect(Collectors.toList());
         assertThat(actual).hasSize(1);
-        // since the min is sometimes 60.0 and sometimes 58.something (due to the 0% percentile
-        // imprecision, we just assert that max and sum are correct
-        assertThat(actual.get(0)).startsWith("my.timer,dt.metrics.source=micrometer gauge,min=");
-        assertThat(actual.get(0)).contains("max=60.0,sum=60.0,count=1 ");
+        assertThat(actual.get(0)).startsWith("my.timer,dt.metrics.source=micrometer gauge,min=60.0,max=60.0,sum=60.0,count=1 ");
+        assertThat(actual.get(0)).hasSize("my.timer,dt.metrics.source=micrometer gauge,min=60.0,max=60.0,sum=60.0,count=1 1617776498381".length());
     }
 
     @Test
