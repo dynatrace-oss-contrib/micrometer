@@ -29,6 +29,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.time.Instant;
 import java.util.*;
@@ -44,8 +46,8 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     private static final String DEFAULT_ONEAGENT_ENDPOINT = "http://127.0.0.1:14499/metrics/ingest";
     private static final int MAX_BATCH_SIZE = 1000;
 
-    private static final String metricExceptionFormatter = "Could not serialize metric with name %s: %s";
-    private static final String illegalArgumentExceptionFormatter = "Illegal value for metric with name %s: %s Dropping...";
+    private static final String METRIC_EXCEPTION_FORMATTER = "Could not serialize metric with name %s: %s";
+    private static final String ILLEGAL_ARGUMENT_EXCEPTION_FORMATTER = "Illegal value for metric with name %s: %s Dropping...";
 
     private final String endpoint;
     private final MetricBuilderFactory metricBuilderFactory;
@@ -74,6 +76,16 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         metricBuilderFactory = factoryBuilder.build();
     }
 
+    private static String makeConcatenatedUriString(String baseUri, String extraPath) throws URISyntaxException, MalformedURLException {
+        // makes sure the base uri is parsable as URL (includes "http://" etc.)
+        URL url = new URL(baseUri);
+        URI uri = url.toURI();
+        // replace all occurrences of two or more forward slashes with a single one
+        String newPath = (uri.getPath() + '/' + extraPath).replaceAll("/{2,}", "/");
+        URI newUri = uri.resolve(newPath).normalize();
+        return newUri.toString();
+    }
+
     static String prepareEndpoint(String uri) {
         String endpoint = DEFAULT_ONEAGENT_ENDPOINT;
 
@@ -83,14 +95,14 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
                 endpoint = uri;
             } else {
                 try {
-                    if (uri.contains("localhost") || uri.contains("127.0.0.1")) {
+                    if (uri.contains("localhost") || uri.contains("127.0.0.1") || uri.contains("::1")) {
                         // append /metrics/ingest for local endpoints if not already there.
-                        endpoint = new URL(new URL(uri), "/metrics/ingest").toString();
+                        endpoint = makeConcatenatedUriString(uri, "/metrics/ingest");
                     } else {
                         // append /api/v2/metrics/ingest to the uri if its not already there.
-                        endpoint = new URL(new URL(uri), "/api/v2/metrics/ingest").toString();
+                        endpoint = makeConcatenatedUriString(uri, "/api/v2/metrics/ingest");
                     }
-                } catch (MalformedURLException e) {
+                } catch (URISyntaxException | MalformedURLException ignored) {
                     logger.warn("Could not parse endpoint url ({}). The export might fail.", uri);
                     endpoint = uri;
                 }
@@ -199,10 +211,10 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
                             .setDoubleSummaryValue(min, max, total, count)
                             .serialize());
         } catch (MetricException e) {
-            logger.warn(String.format(metricExceptionFormatter, meter.getId().getName(), e.getMessage()));
+            logger.warn(String.format(METRIC_EXCEPTION_FORMATTER, meter.getId().getName(), e.getMessage()));
         } catch (IllegalArgumentException iae) {
             // drop lines containing NaN or Infinity silently.
-            logger.debug(String.format(illegalArgumentExceptionFormatter, meter.getId().getName(), iae.getMessage()));
+            logger.debug(String.format(ILLEGAL_ARGUMENT_EXCEPTION_FORMATTER, meter.getId().getName(), iae.getMessage()));
         }
 
         return streamOf(serializedLine);
@@ -279,10 +291,10 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
                                 .setDoubleGaugeValue(measurement.getValue())
                                 .serialize();
                     } catch (MetricException e) {
-                        logger.warn(String.format(metricExceptionFormatter, meter.getId().getName(), e.getMessage()));
+                        logger.warn(String.format(METRIC_EXCEPTION_FORMATTER, meter.getId().getName(), e.getMessage()));
                     } catch (IllegalArgumentException iae) {
                         // drop lines containing NaN or Infinity silently.
-                        logger.debug(String.format(illegalArgumentExceptionFormatter, meter.getId().getName(), iae.getMessage()));
+                        logger.debug(String.format(ILLEGAL_ARGUMENT_EXCEPTION_FORMATTER, meter.getId().getName(), iae.getMessage()));
                     }
                     return null;
                 })
@@ -298,10 +310,10 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
                                 .setDoubleCounterValueDelta(measurement.getValue())
                                 .serialize();
                     } catch (MetricException e) {
-                        logger.warn(String.format(metricExceptionFormatter, meter.getId().getName(), e.getMessage()));
+                        logger.warn(String.format(METRIC_EXCEPTION_FORMATTER, meter.getId().getName(), e.getMessage()));
                     } catch (IllegalArgumentException iae) {
                         // drop lines containing NaN or Infinity silently.
-                        logger.debug(String.format(illegalArgumentExceptionFormatter, meter.getId().getName(), iae.getMessage()));
+                        logger.debug(String.format(ILLEGAL_ARGUMENT_EXCEPTION_FORMATTER, meter.getId().getName(), iae.getMessage()));
                     }
                     return null;
                 })
