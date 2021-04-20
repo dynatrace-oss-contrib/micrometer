@@ -17,7 +17,6 @@
 package io.micrometer.dynatrace.v2;
 
 import io.micrometer.core.instrument.*;
-import io.micrometer.core.instrument.step.StepTimer;
 import io.micrometer.core.ipc.http.HttpSender;
 import io.micrometer.dynatrace.DynatraceApiVersion;
 import io.micrometer.dynatrace.DynatraceConfig;
@@ -25,7 +24,9 @@ import io.micrometer.dynatrace.DynatraceMeterRegistry;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -60,7 +61,7 @@ class DynatraceExporterV2Test {
 
             @Override
             public Duration step() {
-                return Duration.ofMillis(100);
+                return Duration.ofMillis(300);
             }
         };
     }
@@ -129,11 +130,17 @@ class DynatraceExporterV2Test {
         counter.increment();
         counter.increment();
 
-        String expected = String.format("my.counter,dt.metrics.source=micrometer count,delta=%s ", String.valueOf(counter.count()));
+        // wait for the next export interval
+        try {
+            Thread.sleep(300);
+        } catch (InterruptedException ignored) {
+        }
+
+        String expected = "my.counter,dt.metrics.source=micrometer count,delta=3.0 ";
         List<String> actual = exporter.toCounterLine(counter).collect(Collectors.toList());
         assertThat(actual).hasSize(1);
         String actualLine = actual.get(0);
-        String expectedDummy = "my.counter,dt.metrics.source=micrometer count,delta=0.0 1617714022879";
+        String expectedDummy = "my.counter,dt.metrics.source=micrometer count,delta=3.0 1617714022879";
         assertThat(actualLine).hasSize(expectedDummy.length());
         assertThat(actualLine).startsWith(expected);
     }
@@ -144,25 +151,20 @@ class DynatraceExporterV2Test {
         Timer timer = meterRegistry.find("my.timer").timer();
         assertNotNull(timer);
 
-        timer.record(() -> {
-            try {
-                Thread.sleep(10);
-            } catch (InterruptedException ignored) {
-            }
-        });
+        timer.record(Duration.ofMillis(60));
+
 
         try {
-            Thread.sleep(100);
+            Thread.sleep(300);
         } catch (InterruptedException ignored) {
         }
 
         List<String> actual = exporter.toTimerLine(timer).collect(Collectors.toList());
         assertThat(actual).hasSize(1);
-        assertThat(actual.get(0)).startsWith("my.timer,dt.metrics.source=micrometer gauge,");
-        assertThat(actual.get(0)).contains("min=");
-        assertThat(actual.get(0)).contains("max=");
-        assertThat(actual.get(0)).contains("sum=");
-        assertThat(actual.get(0)).contains("count=");
+        // since the min is sometimes 60.0 and sometimes 58.something (due to the 0% percentile
+        // imprecision, we just assert that max and sum are correct
+        assertThat(actual.get(0)).startsWith("my.timer,dt.metrics.source=micrometer gauge,min=");
+        assertThat(actual.get(0)).contains("max=60.0,sum=60.0,count=1 ");
     }
 
     @Test
@@ -177,7 +179,7 @@ class DynatraceExporterV2Test {
             public void run() {
                 longTaskTimer.record(() -> {
                     try {
-                        Thread.sleep(300);
+                        Thread.sleep(500);
                     } catch (InterruptedException ignored) {
                     }
                 });
@@ -187,14 +189,32 @@ class DynatraceExporterV2Test {
 
         // wait for the first scrape to be recorded.
         try {
-            Thread.sleep(100);
+            Thread.sleep(300);
         } catch (InterruptedException ignored) {
         }
 
         List<String> actual = exporter.toLongTaskTimerLine(longTaskTimer).collect(Collectors.toList());
         assertThat(actual).hasSize(1);
         assertThat(actual.get(0)).startsWith("my.long.task.timer,dt.metrics.source=micrometer gauge,");
-        assertThat(actual.get(0)).contains("max=").contains("min=").contains("sum=").contains("count=");
+
+        // contains all key=value pairs (including sum, count, max, and min)
+        Map<String, String> statisticToValueMap =
+                Arrays.stream(actual.get(0).split("[, ]"))
+                        .filter(x -> x.contains("="))
+                        .map(x -> x.split("="))
+                        .collect(Collectors.toMap(x -> x[0], x -> x[1]));
+
+        // make sure all pairs exist
+        assertThat(statisticToValueMap).containsKey("min");
+        assertThat(statisticToValueMap).containsKey("max");
+        assertThat(statisticToValueMap).containsKey("sum");
+        assertThat(statisticToValueMap).containsKey("count");
+        // and that they have values larger than zero,
+        // usually they are somewhere around 290 - 310
+        assertThat(Double.parseDouble(statisticToValueMap.get("min"))).isGreaterThan(280d);
+        assertThat(Double.parseDouble(statisticToValueMap.get("max"))).isGreaterThan(280d);
+        assertThat(Double.parseDouble(statisticToValueMap.get("sum"))).isGreaterThan(280d);
+        assertThat(statisticToValueMap.get("count")).isEqualTo("1");
     }
 
     @Test
@@ -223,10 +243,15 @@ class DynatraceExporterV2Test {
 
         tester.count();
 
+        try {
+            Thread.sleep(300);
+        } catch (InterruptedException e) {
+        }
+
         List<String> actual = exporter.toFunctionCounterLine(functionCounter).collect(Collectors.toList());
         assertThat(actual).hasSize(1);
-        assertThat(actual.get(0)).hasSize("my.function.counter,dt.metrics.source=micrometer count,delta=0.0 1617776498381".length());
-        assertThat(actual.get(0)).startsWith("my.function.counter,dt.metrics.source=micrometer count,delta=");
+        assertThat(actual.get(0)).startsWith("my.function.counter,dt.metrics.source=micrometer count,delta=2.3");
+        assertThat(actual.get(0)).hasSize("my.function.counter,dt.metrics.source=micrometer count,delta=2.3 1617776498381".length());
     }
 
     @Test
