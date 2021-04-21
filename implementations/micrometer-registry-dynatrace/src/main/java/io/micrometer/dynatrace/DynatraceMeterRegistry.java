@@ -65,22 +65,14 @@ public class DynatraceMeterRegistry extends StepMeterRegistry {
             logger.info("Exporting to Dynatrace metrics API v1");
             this.exporter = new DynatraceExporterV1(config, clock, httpClient);
         }
+
+        this.config = config;
+
         start(threadFactory);
     }
 
-    // as the micrometer summary statistics (DistributionSummary, and a number of timer meter types
-    // do not provide the minimum values that are required by Dynatrace to ingest summary metrics,
-    // we add the 0% percentile to each summary statistic and use that as the minimum value.
-    private void registerMinPercentile() {
-        config().meterFilter(new MeterFilter() {
-            @Override
-            public DistributionStatisticConfig configure(Meter.Id id, DistributionStatisticConfig config) {
-                return DistributionStatisticConfig.builder()
-                        .percentiles(0)
-                        .build()
-                        .merge(config);
-            }
-        });
+    public static Builder builder(DynatraceConfig config) {
+        return new Builder(config);
     }
 
     @Override
@@ -91,6 +83,23 @@ public class DynatraceMeterRegistry extends StepMeterRegistry {
     @Override
     protected TimeUnit getBaseTimeUnit() {
         return this.exporter.getBaseTimeUnit();
+    }
+
+    /**
+     * As the micrometer summary statistics (DistributionSummary, and a number of timer meter types
+     * do not provide the minimum values that are required by Dynatrace to ingest summary metrics,
+     * we add the 0% percentile to each summary statistic and use that as the minimum value.
+     */
+    private void registerMinPercentile() {
+        config().meterFilter(new MeterFilter() {
+            @Override
+            public DistributionStatisticConfig configure(Meter.Id id, DistributionStatisticConfig config) {
+                return DistributionStatisticConfig.builder()
+                        .percentiles(0)
+                        .build()
+                        .merge(config);
+            }
+        });
     }
 
     public static class Builder {

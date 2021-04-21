@@ -110,7 +110,7 @@ public interface DynatraceConfig extends StepRegistryConfig {
                             if (apiVersionValidation.isValid()) {
                                 return checkAll(this,
                                         config -> {
-                                            if (config.apiVersion() ==  DynatraceApiVersion.V1) {
+                                            if (config.apiVersion() == DynatraceApiVersion.V1) {
                                                 return checkAll(this,
                                                         checkRequired("apiToken", DynatraceConfig::apiToken),
                                                         checkRequired("uri", DynatraceConfig::uri),
@@ -118,7 +118,14 @@ public interface DynatraceConfig extends StepRegistryConfig {
                                                         check("technologyType", DynatraceConfig::technologyType).andThen(Validated::nonBlank)
                                                 );
                                             } else {
-                                                return apiVersionValidation; // V2 validation comes here
+                                                return checkAll(this,
+                                                        c -> StepRegistryConfig.validate(c),
+                                                        check("apiToken", DynatraceConfig::apiToken)
+                                                                .andThen(v -> v.invalidateWhen(x -> !apiToken().isEmpty() &&
+                                                                                checkRequired("uri", DynatraceConfig::uri).apply(this).isValid() &&
+                                                                                uri().isEmpty(),
+                                                                        "when using an API token, the endpoint URI is required", InvalidReason.MISSING))
+                                                );
                                             }
                                         }
                                 );
@@ -126,19 +133,6 @@ public interface DynatraceConfig extends StepRegistryConfig {
                                 return apiVersionValidation;
                             }
                         })
-        );
-    }
-
-    default Validated<?> validateV2() {
-        // v2 is only invalid when an API token is given but no URL
-        return checkAll(this,
-                c -> StepRegistryConfig.validate(c),
-                check("apiToken", DynatraceConfig::apiToken)
-                        .andThen(v -> v.invalidateWhen(x ->
-                                        !apiToken().isEmpty() &&
-                                        checkRequired("uri", DynatraceConfig::uri).apply(this).isValid() &&
-                                        uri().isEmpty(),
-                                "when using an API token, the endpoint URI is required", InvalidReason.MISSING))
         );
     }
 }

@@ -28,6 +28,7 @@ import io.micrometer.dynatrace.DynatraceConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -136,11 +137,13 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     }
 
     @Override
-    public void export(MeterRegistry registry) {
-        // split the lines by whether or not they exceed the line length limit.
+    public void export(@Nonnull List<List<Meter>> partitions) {
+
+
         Map<Boolean, List<String>> metricLines =
-                registry.getMeters().stream()
-                        .flatMap(this::toMetricLines)
+                partitions.stream()
+                        .flatMap(List::stream)             // turn List<List<Meter>> into Stream<Meter>
+                        .flatMap(this::toMetricLines)      // turn Stream<Meter> into Stream<String>
                         .collect(Collectors.partitioningBy(DynatraceExporterV2::lineLengthBelowLimit));
 
         // both keys will be present, even if empty.
