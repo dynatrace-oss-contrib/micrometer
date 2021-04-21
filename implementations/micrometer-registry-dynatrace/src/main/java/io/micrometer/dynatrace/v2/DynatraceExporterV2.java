@@ -77,10 +77,9 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         metricBuilderFactory = factoryBuilder.build();
     }
 
-    private static String makeConcatenatedUriString(String baseUri, String extraPath) throws URISyntaxException, MalformedURLException {
+    private static String makeConcatenatedUriString(String baseUri, String extraPath) throws URISyntaxException {
         // makes sure the base uri is parsable as URL (includes "http://" etc.)
-        URL url = new URL(baseUri);
-        URI uri = url.toURI();
+        URI uri = new URI(baseUri);
         // replace all occurrences of two or more forward slashes with a single one
         String newPath = (uri.getPath() + '/' + extraPath).replaceAll("/{2,}", "/");
         URI newUri = uri.resolve(newPath).normalize();
@@ -96,7 +95,8 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
                 endpoint = uri;
             } else {
                 try {
-                    if (uri.contains("localhost") || uri.contains("127.0.0.1") || uri.contains("::1")) {
+                    String host = new URL(uri).getHost();
+                    if (host.contains("localhost") || host.contains("127.0.0.1") || host.contains("::1")) {
                         // append /metrics/ingest for local endpoints if not already there.
                         endpoint = makeConcatenatedUriString(uri, "/metrics/ingest");
                     } else {
@@ -362,7 +362,8 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     }
 
     private void sendInBatches(List<String> metricLines) {
-        MetricLinePartition.partition(metricLines)
+        int partitionSize = Math.min(config.batchSize(), MAX_BATCH_SIZE);
+        MetricLinePartition.partition(metricLines, partitionSize)
                 .forEach(this::send);
     }
 
@@ -376,8 +377,9 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
             super(list, partitionSize);
         }
 
-        static List<List<String>> partition(List<String> list) {
-            return new MetricLinePartition(list, MAX_BATCH_SIZE);
+        static List<List<String>> partition(List<String> list, int partitionSize) {
+
+            return new MetricLinePartition(list, partitionSize);
         }
     }
 }
