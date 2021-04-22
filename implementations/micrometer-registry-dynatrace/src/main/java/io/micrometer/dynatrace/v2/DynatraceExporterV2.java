@@ -29,13 +29,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -44,11 +42,14 @@ import java.util.stream.StreamSupport;
  * @author Georg Pirklbauer
  */
 public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
-    private static final String DEFAULT_ONEAGENT_ENDPOINT = "http://127.0.0.1:14499/metrics/ingest";
+    private static final String DEFAULT_ONEAGENT_ENDPOINT = "";
     private static final int MAX_BATCH_SIZE = 1000;
 
     private static final String METRIC_EXCEPTION_FORMATTER = "Could not serialize metric with name %s: %s";
     private static final String ILLEGAL_ARGUMENT_EXCEPTION_FORMATTER = "Illegal value for metric with name %s: %s Dropping...";
+
+    private static final Pattern EXTRACT_LINES_OK = Pattern.compile("\"linesOk\":(\\d+)");
+    private static final Pattern EXTRACT_LINES_INVALID = Pattern.compile("\"linesInvalid\":(\\d+),");
 
     private final String endpoint;
     private final MetricBuilderFactory metricBuilderFactory;
@@ -63,7 +64,11 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     public DynatraceExporterV2(DynatraceConfig config, Clock clock, HttpSender httpClient) {
         super(config, clock, httpClient);
 
-        this.endpoint = config.uri();
+        if (config.uri().isEmpty()) {
+            this.endpoint = DEFAULT_ONEAGENT_ENDPOINT;
+        } else {
+            this.endpoint = config.uri();
+        }
         logger.info("Exporting to endpoint {}", this.endpoint);
 
         MetricBuilderFactory.MetricBuilderFactoryBuilder factoryBuilder = MetricBuilderFactory
@@ -318,10 +323,29 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
                     .withHeader("User-Agent", "micrometer")
                     .withPlainText(body)
                     .send()
-                    .onSuccess((r) -> logger.info("Ingested {} metric lines into Dynatrace, response: {}", metricLines.size(), r.body()))
+                    .onSuccess((r) -> handleSuccess(metricLines.size(), r))
                     .onError((r) -> logger.error("Failed metric ingestion. code={} response.body={}", r.code(), r.body()));
         } catch (Throwable throwable) {
             logger.error("Failed metric ingestion: {}", throwable.getMessage());
+        }
+    }
+
+    private void handleSuccess(int totalSent, HttpSender.Response r) {
+        if (r.code() == 202) {
+            if (r.body().contains("\"error\":null")) {
+                Matcher linesOkMatchResult = EXTRACT_LINES_OK.matcher(r.body());
+                Matcher linesInvalidMatchResult = EXTRACT_LINES_INVALID.matcher(r.body());
+                if (linesOkMatchResult.find() && linesInvalidMatchResult.find()) {
+                    logger.info("Sent {} metric lines, linesOk: {}, linesInvalid: {}.",
+                            totalSent, linesOkMatchResult.group(1), linesInvalidMatchResult.group(1));
+                } else {
+                    logger.warn("could not parse response: {}", r.body());
+                }
+            } else {
+                logger.warn("could not parse response: {}", r.body());
+            }
+        } else {
+            logger.error("Expected status code 202, got {}. Did you specify the ingest path (e. g. /api/v2/metrics/ingest)?", r.code());
         }
     }
 
