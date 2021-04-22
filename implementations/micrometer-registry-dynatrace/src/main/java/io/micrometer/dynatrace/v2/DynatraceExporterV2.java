@@ -63,7 +63,8 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     public DynatraceExporterV2(DynatraceConfig config, Clock clock, HttpSender httpClient) {
         super(config, clock, httpClient);
 
-        this.endpoint = prepareEndpoint(config.uri());
+        this.endpoint = config.uri();
+        logger.info("Exporting to endpoint {}", this.endpoint);
 
         MetricBuilderFactory.MetricBuilderFactoryBuilder factoryBuilder = MetricBuilderFactory
                 .builder()
@@ -75,43 +76,6 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         }
 
         metricBuilderFactory = factoryBuilder.build();
-    }
-
-    private static String makeConcatenatedUriString(String baseUri, String extraPath) throws URISyntaxException {
-        // makes sure the base uri is parsable as URL (includes "http://" etc.)
-        URI uri = new URI(baseUri);
-        // replace all occurrences of two or more forward slashes with a single one
-        String newPath = (uri.getPath() + '/' + extraPath).replaceAll("/{2,}", "/");
-        URI newUri = uri.resolve(newPath).normalize();
-        return newUri.toString();
-    }
-
-    static String prepareEndpoint(String uri) {
-        String endpoint = DEFAULT_ONEAGENT_ENDPOINT;
-
-        if (!uri.isEmpty()) {
-            // ends with "/metrics/ingest" or "/metrics/ingest/"
-            if (uri.matches(".+/metrics/ingest/?$")) {
-                endpoint = uri;
-            } else {
-                try {
-                    String host = new URL(uri).getHost();
-                    if (host.contains("localhost") || host.contains("127.0.0.1") || host.contains("::1")) {
-                        // append /metrics/ingest for local endpoints if not already there.
-                        endpoint = makeConcatenatedUriString(uri, "/metrics/ingest");
-                    } else {
-                        // append /api/v2/metrics/ingest to the uri if its not already there.
-                        endpoint = makeConcatenatedUriString(uri, "/api/v2/metrics/ingest");
-                    }
-                } catch (URISyntaxException | MalformedURLException ignored) {
-                    logger.warn("Could not parse endpoint url ({}). The export might fail.", uri);
-                    endpoint = uri;
-                }
-            }
-        }
-
-        logger.info(String.format("exporting to endpoint %s", endpoint));
-        return endpoint;
     }
 
     private static DimensionList parseDefaultDimensions(Map<String, String> defaultDimensions) {

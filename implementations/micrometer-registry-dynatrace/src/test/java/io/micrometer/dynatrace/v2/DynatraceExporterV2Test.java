@@ -375,35 +375,4 @@ class DynatraceExporterV2Test {
         assertThat(actual.get(0)).startsWith("my.counter,");
         assertThat(actual.get(0)).hasSize("my.counter,tag1=value1,dt.metrics.source=micrometer,tag2=value2 count,delta=0.0 1617796526714".length());
     }
-
-    @Test
-    void prepareEndpoint() {
-        assertThat(DynatraceExporterV2.prepareEndpoint("")).isEqualTo("http://127.0.0.1:14499/metrics/ingest");
-
-        assertThat(DynatraceExporterV2.prepareEndpoint("http://127.0.0.1:14499")).isEqualTo("http://127.0.0.1:14499/metrics/ingest");
-        assertThat(DynatraceExporterV2.prepareEndpoint("http://127.0.0.1:14499/")).isEqualTo("http://127.0.0.1:14499/metrics/ingest");
-
-        assertThat(DynatraceExporterV2.prepareEndpoint("http://localhost:13333")).isEqualTo("http://localhost:13333/metrics/ingest");
-        assertThat(DynatraceExporterV2.prepareEndpoint("http://127.0.0.1:13333")).isEqualTo("http://127.0.0.1:13333/metrics/ingest");
-
-        assertThat(DynatraceExporterV2.prepareEndpoint("http://localhost:13333/metrics/ingest")).isEqualTo("http://localhost:13333/metrics/ingest");
-
-        assertThat(DynatraceExporterV2.prepareEndpoint("https://XXXXXXX.live.dynatrace.com")).isEqualTo("https://XXXXXXX.live.dynatrace.com/api/v2/metrics/ingest");
-        assertThat(DynatraceExporterV2.prepareEndpoint("https://XXXXXXX.live.dynatrace.com/")).isEqualTo("https://XXXXXXX.live.dynatrace.com/api/v2/metrics/ingest");
-
-        assertThat(DynatraceExporterV2.prepareEndpoint("https://XXXXXXX.live.dynatrace.com/api/v2/metrics/ingest")).isEqualTo("https://XXXXXXX.live.dynatrace.com/api/v2/metrics/ingest");
-
-        // IPv6
-        assertThat(DynatraceExporterV2.prepareEndpoint("https://[::1]")).isEqualTo("https://[::1]/metrics/ingest");
-        assertThat(DynatraceExporterV2.prepareEndpoint("https://[::1]/")).isEqualTo("https://[::1]/metrics/ingest");
-        assertThat(DynatraceExporterV2.prepareEndpoint("https://[::1]/metrics/ingest")).isEqualTo("https://[::1]/metrics/ingest");
-
-        // managed
-        assertThat(DynatraceExporterV2.prepareEndpoint("https://dt.example.com/e/abc12345")).isEqualTo("https://dt.example.com/e/abc12345/api/v2/metrics/ingest");
-        assertThat(DynatraceExporterV2.prepareEndpoint("https://dt.example.com/e/abc12345/")).isEqualTo("https://dt.example.com/e/abc12345/api/v2/metrics/ingest");
-        assertThat(DynatraceExporterV2.prepareEndpoint("https://dt.example.com/e/abc12345/api/v2/metrics/ingest")).isEqualTo("https://dt.example.com/e/abc12345/api/v2/metrics/ingest");
-
-        // looks like an invalid URL, which we will just pass through in case the user has special requirements.
-        assertThat(DynatraceExporterV2.prepareEndpoint("192.168.0.1")).isEqualTo("192.168.0.1");
-    }
 }
