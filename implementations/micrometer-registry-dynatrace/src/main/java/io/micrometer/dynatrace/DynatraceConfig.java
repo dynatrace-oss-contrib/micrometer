@@ -96,9 +96,9 @@ public interface DynatraceConfig extends StepRegistryConfig {
     }
 
     default Boolean enrichWithOneAgentMetadata() {
-        // defaults to false if nothing is set.
+        // defaults to true if nothing is set.
         return getBoolean(this, "enrichWithOneAgentMetadata")
-                .orElse(false);
+                .orElse(true);
     }
 
     @Override
