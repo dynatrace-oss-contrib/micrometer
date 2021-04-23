@@ -195,7 +195,7 @@ public class DynatraceMeterRegistry extends StepMeterRegistry {
         // truncate dimension values to maximum length.
         return tags.stream().collect(Collectors.toMap(
                 Tag::getKey,
-                x -> config().namingConvention().tagValue(x.getValue())
+                Tag::getValue
         ));
     }
 
