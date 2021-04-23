@@ -29,6 +29,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import java.net.MalformedURLException;
+import java.net.URI;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -42,7 +44,7 @@ import java.util.stream.StreamSupport;
  * @author Georg Pirklbauer
  */
 public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
-    private static final String DEFAULT_ONEAGENT_ENDPOINT = "";
+    private static final String DEFAULT_ONEAGENT_ENDPOINT = "http://127.0.0.1:14499/metrics/ingest";
     private static final int MAX_BATCH_SIZE = 1000;
 
     private static final String METRIC_EXCEPTION_FORMATTER = "Could not serialize metric with name %s: %s";
@@ -69,6 +71,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         } else {
             this.endpoint = config.uri();
         }
+        warnIfEndpointIsInvalid(endpoint);
         logger.info("Exporting to endpoint {}", this.endpoint);
 
         MetricBuilderFactory.MetricBuilderFactoryBuilder factoryBuilder = MetricBuilderFactory
@@ -107,8 +110,6 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
     @Override
     public void export(@Nonnull List<List<Meter>> partitions) {
-
-
         Map<Boolean, List<String>> metricLines =
                 partitions.stream()
                         .flatMap(List::stream)             // turn List<List<Meter>> into Stream<Meter>
@@ -121,6 +122,14 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         }
 
         sendInBatches(metricLines.get(true));
+    }
+    
+    private void warnIfEndpointIsInvalid(String uri) {
+        try {
+            URI.create(uri).toURL();
+        } catch (IllegalArgumentException | MalformedURLException ex) {
+            logger.warn("This doesn't seem to be a valid URI: {}", uri);
+        }
     }
 
     private Stream<String> toMetricLines(Meter meter) {

@@ -81,6 +81,8 @@ class DynatraceExporterV2Test {
                 request -> new HttpSender.Response(200, null));
     }
 
+
+
     @Test
     void testToDistributionSummaryLine() {
         DistributionSummary summary = DistributionSummary.builder("my.summary").register(meterRegistry);
