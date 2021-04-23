@@ -193,8 +193,10 @@ public class DynatraceMeterRegistry extends StepMeterRegistry {
 
     private Map<String, String> extractDimensionValues(List<Tag> tags) {
         // truncate dimension values to maximum length.
-        return tags.stream().collect(Collectors.toMap(Tag::getKey,
-                x -> config().namingConvention().tagValue(x.getValue())));
+        return tags.stream().collect(Collectors.toMap(
+                Tag::getKey,
+                x -> config().namingConvention().tagValue(x.getValue())
+        ));
     }
 
     private boolean isCustomMetricNotCreated(final DynatraceMetricDefinition metric) {
