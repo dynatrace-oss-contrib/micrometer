@@ -38,7 +38,7 @@ public class DynatraceNamingConvention implements NamingConvention {
     private static final Pattern LEADING_NUMERIC_PATTERN = Pattern.compile("[._-]([\\d])+");
     private static final Pattern KEY_CLEANUP_PATTERN = Pattern.compile("[^\\w.-]");
     
-    private static final int METRIC_VALUE_MAX_LENGTH = 128;
+    private static final int TAG_VALUE_MAX_LENGTH = 128;
 
     private final NamingConvention delegate;
 
@@ -76,9 +76,9 @@ public class DynatraceNamingConvention implements NamingConvention {
 
     @Override
     public String tagValue(String value) {
-        if (value.length() <= METRIC_VALUE_MAX_LENGTH){
+        if (value.length() <= TAG_VALUE_MAX_LENGTH){
             return value;
         }
-        return value.substring(0, METRIC_VALUE_MAX_LENGTH);
+        return value.substring(0, TAG_VALUE_MAX_LENGTH);
     }
 }
