@@ -50,8 +50,9 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     private static final String METRIC_EXCEPTION_FORMATTER = "Could not serialize metric with name %s: %s";
     private static final String ILLEGAL_ARGUMENT_EXCEPTION_FORMATTER = "Illegal value for metric with name %s: %s Dropping...";
 
-    private static final Pattern EXTRACT_LINES_OK = Pattern.compile("\"linesOk\":(\\d+)");
-    private static final Pattern EXTRACT_LINES_INVALID = Pattern.compile("\"linesInvalid\":(\\d+),");
+    private static final Pattern EXTRACT_LINES_OK = Pattern.compile("\"linesOk\":\\s?(\\d+)");
+    private static final Pattern EXTRACT_LINES_INVALID = Pattern.compile("\"linesInvalid\":\\s?(\\d+),");
+    private static final Pattern IS_NULL_ERROR_RESPONSE = Pattern.compile("\"error\":\\s?null");
 
     private final String endpoint;
     private final MetricBuilderFactory metricBuilderFactory;
@@ -71,7 +72,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         } else {
             this.endpoint = config.uri();
         }
-        warnIfEndpointIsInvalid(endpoint);
+        showErrorIfEndpointIsInvalid(endpoint);
         logger.info("Exporting to endpoint {}", this.endpoint);
 
         MetricBuilderFactory.MetricBuilderFactoryBuilder factoryBuilder = MetricBuilderFactory
@@ -123,12 +124,12 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
         sendInBatches(metricLines.get(true));
     }
-    
-    private void warnIfEndpointIsInvalid(String uri) {
+
+    private void showErrorIfEndpointIsInvalid(String uri) {
         try {
             URI.create(uri).toURL();
         } catch (IllegalArgumentException | MalformedURLException ex) {
-            logger.warn("This doesn't seem to be a valid URI: {}", uri);
+            logger.error("Invalid URI provided, exporting will fail: {}", uri);
         }
     }
 
@@ -341,7 +342,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
     private void handleSuccess(int totalSent, HttpSender.Response r) {
         if (r.code() == 202) {
-            if (r.body().contains("\"error\":null")) {
+            if (IS_NULL_ERROR_RESPONSE.matcher(r.body()).find()) {
                 Matcher linesOkMatchResult = EXTRACT_LINES_OK.matcher(r.body());
                 Matcher linesInvalidMatchResult = EXTRACT_LINES_INVALID.matcher(r.body());
                 if (linesOkMatchResult.find() && linesInvalidMatchResult.find()) {
@@ -354,6 +355,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
                 logger.warn("could not parse response: {}", r.body());
             }
         } else {
+            // common pitfall if URI is supplied in v1 format (without endpoint path)
             logger.error("Expected status code 202, got {}. Did you specify the ingest path (e. g. /api/v2/metrics/ingest)?", r.code());
         }
     }

@@ -37,6 +37,8 @@ class DynatraceExporterV2Test {
     private final DynatraceMeterRegistry meterRegistry = createMeterRegistry();
     private final DynatraceExporterV2 exporter = createExporter();
 
+    private static final int timeout = 400;
+
     private DynatraceConfig createDynatraceConfig() {
         return new DynatraceConfig() {
             @Override
@@ -61,7 +63,7 @@ class DynatraceExporterV2Test {
 
             @Override
             public Duration step() {
-                return Duration.ofMillis(300);
+                return Duration.ofMillis(timeout);
             }
         };
     }
@@ -81,8 +83,6 @@ class DynatraceExporterV2Test {
                 request -> new HttpSender.Response(200, null));
     }
 
-
-
     @Test
     void testToDistributionSummaryLine() {
         DistributionSummary summary = DistributionSummary.builder("my.summary").register(meterRegistry);
@@ -91,10 +91,15 @@ class DynatraceExporterV2Test {
         summary.record(5.4);
         summary.record(.1);
 
+        try {
+            Thread.sleep(timeout);
+        } catch (InterruptedException ignored) {
+        }
+
         List<String> actual = exporter.toDistributionSummaryLine(summary).collect(Collectors.toList());
         assertThat(actual).hasSize(1);
         assertThat(actual.get(0)).startsWith("my.summary,dt.metrics.source=micrometer gauge");
-        assertThat(actual.get(0)).contains("max=").contains("min=").contains("sum=").contains("count=");
+        assertThat(actual.get(0)).contains("max=5.4").contains("min=0.0").contains("sum=10.9").contains("count=4");
     }
 
     @Test
@@ -108,7 +113,6 @@ class DynatraceExporterV2Test {
         String expectedDummy = "my.gauge,dt.metrics.source=micrometer gauge,1.23 1617714022879";
         assertThat(actual.get(0)).hasSize(expectedDummy.length());
     }
-
 
     @Test
     void toMeterLine() {
@@ -134,7 +138,7 @@ class DynatraceExporterV2Test {
 
         // wait for the next export interval
         try {
-            Thread.sleep(300);
+            Thread.sleep(timeout);
         } catch (InterruptedException ignored) {
         }
 
@@ -154,17 +158,18 @@ class DynatraceExporterV2Test {
         assertNotNull(timer);
 
         timer.record(Duration.ofMillis(60));
-
+        timer.record(Duration.ofMillis(20));
+        timer.record(Duration.ofMillis(10));
 
         try {
-            Thread.sleep(300);
+            Thread.sleep(timeout);
         } catch (InterruptedException ignored) {
         }
 
         List<String> actual = exporter.toTimerLine(timer).collect(Collectors.toList());
         assertThat(actual).hasSize(1);
-        assertThat(actual.get(0)).startsWith("my.timer,dt.metrics.source=micrometer gauge,min=60.0,max=60.0,sum=60.0,count=1 ");
-        assertThat(actual.get(0)).hasSize("my.timer,dt.metrics.source=micrometer gauge,min=60.0,max=60.0,sum=60.0,count=1 1617776498381".length());
+        assertThat(actual.get(0)).startsWith("my.timer,dt.metrics.source=micrometer gauge,min=0.0,max=60.0,sum=90.0,count=3 ");
+        assertThat(actual.get(0)).hasSize("my.timer,dt.metrics.source=micrometer gauge,min=0.0,max=60.0,sum=60.0,count=3 1617776498381".length());
     }
 
     @Test
@@ -189,7 +194,7 @@ class DynatraceExporterV2Test {
 
         // wait for the first scrape to be recorded.
         try {
-            Thread.sleep(300);
+            Thread.sleep(timeout);
         } catch (InterruptedException ignored) {
         }
 
@@ -211,9 +216,9 @@ class DynatraceExporterV2Test {
         assertThat(statisticToValueMap).containsKey("count");
         // and that they have values larger than zero,
         // usually they are somewhere around 290 - 310
-        assertThat(Double.parseDouble(statisticToValueMap.get("min"))).isGreaterThan(280d);
-        assertThat(Double.parseDouble(statisticToValueMap.get("max"))).isGreaterThan(280d);
-        assertThat(Double.parseDouble(statisticToValueMap.get("sum"))).isGreaterThan(280d);
+        assertThat(Double.parseDouble(statisticToValueMap.get("min"))).isGreaterThan(timeout - 20);
+        assertThat(Double.parseDouble(statisticToValueMap.get("max"))).isGreaterThan(timeout - 20);
+        assertThat(Double.parseDouble(statisticToValueMap.get("sum"))).isGreaterThan(timeout - 20);
         assertThat(statisticToValueMap.get("count")).isEqualTo("1");
     }
 
@@ -244,7 +249,7 @@ class DynatraceExporterV2Test {
         tester.count();
 
         try {
-            Thread.sleep(300);
+            Thread.sleep(timeout);
         } catch (InterruptedException e) {
         }
 
