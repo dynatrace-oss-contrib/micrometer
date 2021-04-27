@@ -85,7 +85,7 @@ public class DynatraceMeterRegistry extends StepMeterRegistry {
     }
 
     /**
-     * As the micrometer summary statistics (DistributionSummary, and a number of timer meter types
+     * As the micrometer summary statistics (DistributionSummary, and a number of timer meter types)
      * do not provide the minimum values that are required by Dynatrace to ingest summary metrics,
      * we add the 0% percentile to each summary statistic and use that as the minimum value.
      */
@@ -134,4 +134,3 @@ public class DynatraceMeterRegistry extends StepMeterRegistry {
         }
     }
 }
-

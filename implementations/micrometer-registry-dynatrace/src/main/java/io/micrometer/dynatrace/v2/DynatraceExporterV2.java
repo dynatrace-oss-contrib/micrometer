@@ -377,7 +377,6 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         }
 
         static List<List<String>> partition(List<String> list, int partitionSize) {
-
             return new MetricLinePartition(list, partitionSize);
         }
     }
