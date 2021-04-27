@@ -133,6 +133,5 @@ public class DynatraceMeterRegistry extends StepMeterRegistry {
             return new DynatraceMeterRegistry(config, clock, threadFactory, httpClient);
         }
     }
-
 }
 
