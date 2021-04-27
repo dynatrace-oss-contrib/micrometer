@@ -250,7 +250,7 @@ class DynatraceExporterV2Test {
 
         try {
             Thread.sleep(timeout);
-        } catch (InterruptedException e) {
+        } catch (InterruptedException ignored) {
         }
 
         List<String> actual = exporter.toFunctionCounterLine(functionCounter).collect(Collectors.toList());
@@ -306,8 +306,8 @@ class DynatraceExporterV2Test {
     void toGaugeInvalidCases() {
         meterRegistry.gauge("my.gauge1", Double.NaN);
         Gauge gauge1 = meterRegistry.find("my.gauge1").gauge();
-        List<String> actual1 = exporter.toGauge(gauge1).collect(Collectors.toList());
         assertNotNull(gauge1);
+        List<String> actual1 = exporter.toGauge(gauge1).collect(Collectors.toList());
         assertThat(actual1).isEmpty();
 
         meterRegistry.gauge("my.gauge2", Double.NEGATIVE_INFINITY);

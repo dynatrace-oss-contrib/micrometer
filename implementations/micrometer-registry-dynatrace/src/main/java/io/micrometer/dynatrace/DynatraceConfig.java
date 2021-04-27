@@ -48,8 +48,8 @@ public interface DynatraceConfig extends StepRegistryConfig {
     }
 
     default String uri() {
-        // for v2, if no URI is set, use the default OneAgent endpoint.
-        // <https://www.dynatrace.com/support/help/how-to-use-dynatrace/metrics/metric-ingestion/ingestion-methods/local-api/>
+        // If no URI is set, return an empty string. It is up to the exporter to decide what to do
+        // with an empty URI.
         if (apiVersion() == DynatraceApiVersion.V1) {
             return getUrlString(this, "uri").required().get();
         }
