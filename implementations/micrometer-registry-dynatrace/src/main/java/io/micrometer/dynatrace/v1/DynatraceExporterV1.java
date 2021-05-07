@@ -201,6 +201,7 @@ public class DynatraceExporterV1 extends AbstractDynatraceExporter {
     void putCustomMetric(final DynatraceMetricDefinition customMetric) {
         try {
             httpClient.put(customMetricEndpointTemplate + customMetric.getMetricId() + "?api-token=" + config.apiToken())
+                    .withHeader("User-Agent", "micrometer")
                     .withJsonContent(customMetric.asJson())
                     .send()
                     .onSuccess(response -> {
