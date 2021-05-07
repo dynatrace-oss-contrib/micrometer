@@ -58,9 +58,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     private final MetricBuilderFactory metricBuilderFactory;
 
     private static final Logger logger = LoggerFactory.getLogger(DynatraceExporterV2.class.getName());
-    private static final Map<String, String> staticDimensions = new HashMap<String, String>() {{
-        put("dt.metrics.source", "micrometer");
-    }};
+    private static final Map<String, String> staticDimensions = Collections.singletonMap("dt.metrics.source", "micrometer");
 
     private static final int METRIC_LINE_MAX_LENGTH = 2000;
 
@@ -87,25 +85,13 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         metricBuilderFactory = factoryBuilder.build();
     }
 
-    private static DimensionList parseDefaultDimensions(Map<String, String> defaultDimensions) {
-        Stream<Map.Entry<String, String>> defaultDimensionStream = Stream.empty();
-
-        if (defaultDimensions != null) {
-            defaultDimensionStream = defaultDimensions.entrySet().stream();
-        }
-
-        // combine static dimensions (for this implementation) and default dimensions passed
-        // via the configuration into one stream.
-        Stream<Map.Entry<String, String>> concatenated = Stream.concat(
-                defaultDimensionStream,
+    private DimensionList parseDefaultDimensions(Map<String, String> defaultDimensions) {
+        List<Dimension> dimensions = Stream.concat(
+                defaultDimensions != null ? defaultDimensions.entrySet().stream() : Stream.empty(),
                 staticDimensions.entrySet().stream()
-        );
-
-        // create dimensions from the combined stream elements.
-        List<Dimension> dimensions = concatenated.map(
-                (kv) -> Dimension.create(kv.getKey(), kv.getValue())
-        ).collect(Collectors.toList());
-        // construct a dimensionlist from the combined diemensions.
+        )
+                .map(entry -> Dimension.create(entry.getKey(), entry.getValue()))
+                .collect(Collectors.toList());
         return DimensionList.fromCollection(dimensions);
     }
 
@@ -266,40 +252,44 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
     Stream<String> toGauge(Meter meter) {
         return streamOf(meter.measure()).map(
-                measurement -> {
-                    try {
-                        throwIfValueIsInvalid(measurement.getValue());
-                        return createMetricBuilder(meter)
-                                .setDoubleGaugeValue(measurement.getValue())
-                                .serialize();
-                    } catch (MetricException e) {
-                        logger.warn(String.format(METRIC_EXCEPTION_FORMATTER, meter.getId().getName(), e.getMessage()));
-                    } catch (IllegalArgumentException iae) {
-                        // drop lines containing NaN or Infinity silently.
-                        logger.debug(String.format(ILLEGAL_ARGUMENT_EXCEPTION_FORMATTER, meter.getId().getName(), iae.getMessage()));
-                    }
-                    return null;
-                })
+                measurement -> createGaugeLine(meter, measurement))
                 .filter(Objects::nonNull);
+    }
+
+    private String createGaugeLine(Meter meter, Measurement measurement) {
+        try {
+            throwIfValueIsInvalid(measurement.getValue());
+            return createMetricBuilder(meter)
+                    .setDoubleGaugeValue(measurement.getValue())
+                    .serialize();
+        } catch (MetricException e) {
+            logger.warn(String.format(METRIC_EXCEPTION_FORMATTER, meter.getId().getName(), e.getMessage()));
+        } catch (IllegalArgumentException iae) {
+            // drop lines containing NaN or Infinity silently.
+            logger.debug(String.format(ILLEGAL_ARGUMENT_EXCEPTION_FORMATTER, meter.getId().getName(), iae.getMessage()));
+        }
+        return null;
     }
 
     Stream<String> toCounter(Meter meter) {
         return streamOf(meter.measure()).map(
-                measurement -> {
-                    try {
-                        throwIfValueIsInvalid(measurement.getValue());
-                        return createMetricBuilder(meter)
-                                .setDoubleCounterValueDelta(measurement.getValue())
-                                .serialize();
-                    } catch (MetricException e) {
-                        logger.warn(String.format(METRIC_EXCEPTION_FORMATTER, meter.getId().getName(), e.getMessage()));
-                    } catch (IllegalArgumentException iae) {
-                        // drop lines containing NaN or Infinity silently.
-                        logger.debug(String.format(ILLEGAL_ARGUMENT_EXCEPTION_FORMATTER, meter.getId().getName(), iae.getMessage()));
-                    }
-                    return null;
-                })
+                measurement -> createCounterLine(meter, measurement))
                 .filter(Objects::nonNull);
+    }
+
+    private String createCounterLine(Meter meter, Measurement measurement) {
+        try {
+            throwIfValueIsInvalid(measurement.getValue());
+            return createMetricBuilder(meter)
+                    .setDoubleCounterValueDelta(measurement.getValue())
+                    .serialize();
+        } catch (MetricException e) {
+            logger.warn(String.format(METRIC_EXCEPTION_FORMATTER, meter.getId().getName(), e.getMessage()));
+        } catch (IllegalArgumentException iae) {
+            // drop lines containing NaN or Infinity silently.
+            logger.debug(String.format(ILLEGAL_ARGUMENT_EXCEPTION_FORMATTER, meter.getId().getName(), iae.getMessage()));
+        }
+        return null;
     }
 
     private Metric.Builder createMetricBuilder(Meter meter) {
@@ -329,7 +319,6 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
             httpClient.post(endpoint)
                     .withHeader("Authorization", "Api-Token " + config.apiToken())
-                    .withHeader("Content-Type", "text/plain")
                     .withHeader("User-Agent", "micrometer")
                     .withPlainText(body)
                     .send()
