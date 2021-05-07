@@ -96,10 +96,9 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     }
 
     @Override
-    public void export(@Nonnull List<List<Meter>> partitions) {
+    public void export(@Nonnull List<Meter> meters) {
         Map<Boolean, List<String>> metricLines =
-                partitions.stream()
-                        .flatMap(List::stream)             // turn List<List<Meter>> into Stream<Meter>
+                meters.stream()                            // turn List<Meter> into Stream<Meter>
                         .flatMap(this::toMetricLines)      // turn Stream<Meter> into Stream<String>
                         .collect(Collectors.partitioningBy(DynatraceExporterV2::lineLengthBelowLimit));
 

@@ -76,7 +76,7 @@ public class DynatraceMeterRegistry extends StepMeterRegistry {
 
     @Override
     protected void publish() {
-        exporter.export(MeterPartition.partition(this, config.batchSize()));
+        exporter.export(this.getMeters());
     }
 
     @Override
