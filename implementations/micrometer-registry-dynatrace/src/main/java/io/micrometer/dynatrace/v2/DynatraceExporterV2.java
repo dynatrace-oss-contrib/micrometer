@@ -323,7 +323,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
                     .withPlainText(body)
                     .send()
                     .onSuccess((r) -> handleSuccess(metricLines.size(), r))
-                    .onError((r) -> logger.error("Failed metric ingestion. code={} response.body={}", r.code(), r.body()));
+                    .onError((r) -> logger.error("Failed metric ingestion. Error code={} response.body={}", r.code(), r.body()));
         } catch (Throwable throwable) {
             logger.error("Failed metric ingestion: {}", throwable.getMessage());
         }
