@@ -328,23 +328,23 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         }
     }
 
-    private void handleSuccess(int totalSent, HttpSender.Response r) {
-        if (r.code() == 202) {
-            if (IS_NULL_ERROR_RESPONSE.matcher(r.body()).find()) {
-                Matcher linesOkMatchResult = EXTRACT_LINES_OK.matcher(r.body());
-                Matcher linesInvalidMatchResult = EXTRACT_LINES_INVALID.matcher(r.body());
+    private void handleSuccess(int totalSent, HttpSender.Response response) {
+        if (response.code() == 202) {
+            if (IS_NULL_ERROR_RESPONSE.matcher(response.body()).find()) {
+                Matcher linesOkMatchResult = EXTRACT_LINES_OK.matcher(response.body());
+                Matcher linesInvalidMatchResult = EXTRACT_LINES_INVALID.matcher(response.body());
                 if (linesOkMatchResult.find() && linesInvalidMatchResult.find()) {
                     logger.info("Sent {} metric lines, linesOk: {}, linesInvalid: {}.",
                             totalSent, linesOkMatchResult.group(1), linesInvalidMatchResult.group(1));
                 } else {
-                    logger.warn("could not parse response: {}", r.body());
+                    logger.warn("could not parse response: {}", response.body());
                 }
             } else {
-                logger.warn("could not parse response: {}", r.body());
+                logger.warn("could not parse response: {}", response.body());
             }
         } else {
             // common pitfall if URI is supplied in v1 format (without endpoint path)
-            logger.error("Expected status code 202, got {}. Did you specify the ingest path (e. g. /api/v2/metrics/ingest)?", r.code());
+            logger.error("Expected status code 202, got {}. Did you specify the ingest path (e.g.: /api/v2/metrics/ingest)?\n{}", response.code(), response.body());
         }
     }
 
