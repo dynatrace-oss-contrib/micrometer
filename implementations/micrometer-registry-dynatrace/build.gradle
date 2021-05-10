@@ -6,5 +6,5 @@ dependencies {
     implementation('com.dynatrace.metric.util:dynatrace-metric-utils-java')
 
     testImplementation project(':micrometer-test')
-    testImplementation 'com.fasterxml.jackson.core:jackson-databind'
+    testImplementation('com.fasterxml.jackson.core:jackson-databind')
 }
