@@ -344,7 +344,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
             }
         } else {
             // common pitfall if URI is supplied in v1 format (without endpoint path)
-            logger.error("Expected status code 202, got {}. Did you specify the ingest path (e.g.: /api/v2/metrics/ingest)?\n{}", response.code(), response.body());
+            logger.error("Expected status code 202, got {}. Did you specify the ingest path (e.g.: /api/v2/metrics/ingest)?", response.code());
         }
     }
 
