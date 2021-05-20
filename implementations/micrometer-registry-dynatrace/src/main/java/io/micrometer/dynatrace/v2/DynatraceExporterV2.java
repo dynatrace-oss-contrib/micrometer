@@ -90,9 +90,10 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     }
 
     /**
-     * Export to the Dynatrace v2 endpoint. Metrics that contain NaN or Infinite values, as well as
-     * lines that are too long after serialization will be dropped and not exported. If the number
-     * of lines exceeds the maximum number of lines per request, lines will be sent in chunks.
+     * Export to the Dynatrace v2 endpoint. Measurements that contain NaN or Infinite values, as
+     * well as serialized data points that exceed length limits imposed by the API will be dropped
+     * and not exported. If the number of serialized data points exceeds the maximum number of
+     * allowed data points per request they will be sent in chunks.
      *
      * @param meters A list of {@link Meter Meters} that are serialized as one or more metric lines.
      */

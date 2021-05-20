@@ -355,8 +355,8 @@ class DynatraceExporterV2Test {
         Counter counter = meterRegistry.find("my.counter1").counter();
         assertNotNull(counter);
 
-        // NaN and infinity seem to be ignored. The counter value stays at 0.0 when adding one of
-        // NaN, +Inf or -Inf.
+        // NaN and infinity are ignored. The counter value stays at 0.0 when adding one of NaN,
+        // +Inf or -Inf.
         counter.increment(Double.NaN);
         List<String> actual1 = exporter.toCounter(counter).collect(Collectors.toList());
         counter.increment(Double.POSITIVE_INFINITY);
@@ -387,7 +387,7 @@ class DynatraceExporterV2Test {
     }
 
     @Test
-    void tooLongLine() {
+    void linesExceedingLengthLimitDiscardedGracefully() {
         List<Tag> tagList = new ArrayList<>();
         for (int i = 0; i < 250; i++) {
             tagList.add(Tag.of(String.format("key%d", i), String.format("val%d", i)));
