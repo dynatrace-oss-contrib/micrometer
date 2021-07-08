@@ -25,8 +25,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 public class DynatraceSampleV1 {
     public static void main(String[] args) {
         // WARNING:
-        // This example uses the Dynatrace v1 metrics endpoint, which is in maintenance mode.
-        // We suggest using the v2 exporter instead.
+        // This example uses the Dynatrace v1 registry, which uses the former Timeseries v1 API.
+        // It is suggested to use the current v2 registry instead, which exports to the Metrics API v2.
         new SpringApplicationBuilder(DynatraceSampleV1.class).profiles("dynatrace-v1").run(args);
     }
 }

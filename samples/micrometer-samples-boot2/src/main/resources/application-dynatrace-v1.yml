@@ -15,9 +15,9 @@
 #
 
 ####################################################################
-#                             WARNING:                             #
-#   Using the Dynatrace v1 Metrics API is no longer recommended.   #
-# Please consider using the Dynatrace v2 Metrics exporter instead. #
+# WARNING:
+# This example uses the Dynatrace v1 registry, which uses the former Timeseries v1 API.
+# It is suggested to use the current v2 registry instead, which exports to the Metrics API v2.
 ####################################################################
 
 management.metrics.export.dynatrace:
