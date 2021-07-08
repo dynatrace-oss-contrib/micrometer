@@ -14,11 +14,11 @@
 # limitations under the License.
 #
 
-####################################################################
+###################################################################################################
 # WARNING:
 # This example uses the Dynatrace v1 registry, which uses the former Timeseries v1 API.
 # It is suggested to use the current v2 registry instead, which exports to the Metrics API v2.
-####################################################################
+###################################################################################################
 
 management.metrics.export.dynatrace:
   enabled: true
