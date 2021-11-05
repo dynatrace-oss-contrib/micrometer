@@ -15,7 +15,7 @@
  */
 package io.micrometer.dynatrace;
 
-import com.dynatrace.metric.util.DynatraceMetricApiConstants;
+import com.dynatrace.file.util.DynatraceFileBasedConfigurationProvider;
 import io.micrometer.core.instrument.config.validate.Validated;
 import io.micrometer.core.instrument.step.StepRegistryConfig;
 import io.micrometer.core.lang.Nullable;
@@ -46,7 +46,13 @@ public interface DynatraceConfig extends StepRegistryConfig {
         if (apiVersion() == V1) {
             return secret.required().get();
         }
-        return secret.orElse("");
+
+        return secret.orElse(
+                // Local OneAgent does not require a token.
+                uri().contains("http://localhost") ?
+                        "" :
+                        DynatraceFileBasedConfigurationProvider.getInstance().getMetricIngestToken()
+        );
     }
 
     default String uri() {
@@ -54,7 +60,9 @@ public interface DynatraceConfig extends StepRegistryConfig {
         if (apiVersion() == V1) {
             return uri.required().get();
         }
-        return uri.orElse(DynatraceMetricApiConstants.getDefaultOneAgentEndpoint());
+        return uri.orElse(
+                DynatraceFileBasedConfigurationProvider.getInstance().getMetricIngestEndpoint()
+        );
     }
 
     default String deviceId() {

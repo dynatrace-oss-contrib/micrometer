@@ -15,18 +15,36 @@
  */
 package io.micrometer.dynatrace;
 
+import com.dynatrace.file.util.FileBasedConfigurationTestHelper;
 import com.dynatrace.metric.util.DynatraceMetricApiConstants;
 import io.micrometer.core.instrument.config.validate.InvalidReason;
 import io.micrometer.core.instrument.config.validate.Validated;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class DynatraceConfigTest {
+    private static String nonExistentConfigFileName = UUID.randomUUID().toString();
+    
+    @BeforeEach
+    void setUp() {
+        // This is required for environments where the 
+        // /var/lib/dynatrace/enrichment/endpoint/endpoint.properties exists, as then the 
+        // config would read from that file. By setting it to a non-existent file, this 
+        // can be circumvented (the FileBasedConfigurationProvider will return the defaults if
+        // the specified file is not found).
+        FileBasedConfigurationTestHelper.forceOverwriteConfig(nonExistentConfigFileName);
+    }
+
     @Test
     void invalid() {
         DynatraceConfig config = new DynatraceConfig() {
@@ -260,5 +278,43 @@ class DynatraceConfigTest {
         };
 
         assertThat(config.apiVersion()).isEqualTo(DynatraceApiVersion.V1);
+    }
+
+    @Test
+    void testFileBasedConfig() throws IOException, InterruptedException {
+        String uuid = UUID.randomUUID().toString();
+        final Path tempFile = Files.createTempFile(uuid, ".properties");
+
+        Files.write(tempFile,
+                ("DT_METRICS_INGEST_URL = https://your-dynatrace-ingest-url/api/v2/metrics/ingest\n" +
+                        "DT_METRICS_INGEST_API_TOKEN = YOUR.DYNATRACE.TOKEN").getBytes());
+        // wait for write operation to finish, as it is running async.
+        Thread.sleep(10);
+
+        FileBasedConfigurationTestHelper.forceOverwriteConfig(tempFile.toString());
+
+        DynatraceConfig config = new DynatraceConfig() {
+            @Override
+            public String get(String key) {
+                return null;
+            }
+
+            @Override
+            public DynatraceApiVersion apiVersion() {
+                return DynatraceApiVersion.V2;
+            }
+        };
+
+        assertThat(config.apiToken()).isEqualTo("YOUR.DYNATRACE.TOKEN");
+        assertThat(config.uri()).isEqualTo("https://your-dynatrace-ingest-url/api/v2/metrics/ingest");
+
+        Files.write(tempFile,
+                ("DT_METRICS_INGEST_URL = https://a-different-url/api/v2/metrics/ingest\n" +
+                        "DT_METRICS_INGEST_API_TOKEN = A.DIFFERENT.TOKEN").getBytes());
+        Thread.sleep(10);
+        assertThat(config.apiToken()).isEqualTo("A.DIFFERENT.TOKEN");
+        assertThat(config.uri()).isEqualTo("https://a-different-url/api/v2/metrics/ingest");
+        
+        Files.deleteIfExists(tempFile);
     }
 }
