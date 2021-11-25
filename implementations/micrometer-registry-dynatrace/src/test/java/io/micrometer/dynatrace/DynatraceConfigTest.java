@@ -37,11 +37,7 @@ class DynatraceConfigTest {
     
     @BeforeEach
     void setUp() {
-        // This is required for environments where the 
-        // /var/lib/dynatrace/enrichment/endpoint/endpoint.properties exists, as then the 
-        // config would read from that file. By setting it to a non-existent file, this 
-        // can be circumvented (the FileBasedConfigurationProvider will return the defaults if
-        // the specified file is not found).
+        // Make sure that all tests use the default configuration, even if there's an `endpoint.properties` file in place
         FileBasedConfigurationTestHelper.forceOverwriteConfig(nonExistentConfigFileName);
     }
 
@@ -288,7 +284,10 @@ class DynatraceConfigTest {
         Files.write(tempFile,
                 ("DT_METRICS_INGEST_URL = https://your-dynatrace-ingest-url/api/v2/metrics/ingest\n" +
                         "DT_METRICS_INGEST_API_TOKEN = YOUR.DYNATRACE.TOKEN").getBytes());
-        // wait for write operation to finish, as it is running async.
+
+        // sleep for a short time so that the change can be picked up by the watcher
+        // This is only required in scenarios where writing and reading the file happens in very rapid succession
+        // (e.g. if both are done in one thread, as is the case in these tests).
         Thread.sleep(10);
 
         FileBasedConfigurationTestHelper.forceOverwriteConfig(tempFile.toString());
@@ -311,7 +310,10 @@ class DynatraceConfigTest {
         Files.write(tempFile,
                 ("DT_METRICS_INGEST_URL = https://a-different-url/api/v2/metrics/ingest\n" +
                         "DT_METRICS_INGEST_API_TOKEN = A.DIFFERENT.TOKEN").getBytes());
+
+        // sleep for a short time so that the change can be picked up by the watcher
         Thread.sleep(10);
+
         assertThat(config.apiToken()).isEqualTo("A.DIFFERENT.TOKEN");
         assertThat(config.uri()).isEqualTo("https://a-different-url/api/v2/metrics/ingest");
         
