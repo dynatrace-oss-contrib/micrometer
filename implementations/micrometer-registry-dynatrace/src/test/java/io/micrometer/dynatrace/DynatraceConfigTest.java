@@ -33,7 +33,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class DynatraceConfigTest {
-    private static String nonExistentConfigFileName = UUID.randomUUID().toString();
+    private static final String nonExistentConfigFileName = UUID.randomUUID().toString();
     
     @BeforeEach
     void setUp() {
