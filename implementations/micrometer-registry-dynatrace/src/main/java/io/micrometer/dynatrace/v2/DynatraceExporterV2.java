@@ -56,16 +56,10 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     private final InternalLogger logger = InternalLoggerFactory.getInstance(DynatraceExporterV2.class);
     private static final Map<String, String> staticDimensions = Collections.singletonMap("dt.metrics.source", "micrometer");
 
-    private final String endpoint;
-    private final boolean ignoreToken;
     private final MetricBuilderFactory metricBuilderFactory;
 
     public DynatraceExporterV2(DynatraceConfig config, Clock clock, HttpSender httpClient) {
         super(config, clock, httpClient);
-        this.endpoint = config.uri();
-        showErrorIfEndpointIsInvalid(endpoint);
-        ignoreToken = shouldIgnoreToken(config);
-        logger.info("Exporting to endpoint {}", this.endpoint);
 
         MetricBuilderFactory.MetricBuilderFactoryBuilder factoryBuilder = MetricBuilderFactory.builder()
                 .withPrefix(config.metricKeyPrefix())
@@ -78,11 +72,11 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         metricBuilderFactory = factoryBuilder.build();
     }
 
-    private void showErrorIfEndpointIsInvalid(String uri) {
+    private void reportErrorIfEndpointSeemsInvalid(String uri) {
         try {
             URI.create(uri).toURL();
         } catch (IllegalArgumentException | MalformedURLException ex) {
-            logger.error("Invalid URI provided, exporting will fail: {}", uri);
+            logger.error("Invalid URI: {}", uri);
         }
     }
 
@@ -255,11 +249,16 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
     private void send(List<String> metricLines) {
         try {
+            String endpoint = config.uri();
+            reportErrorIfEndpointSeemsInvalid(endpoint);
+
+            logger.debug("Sending {} lines to {}", metricLines.size(), endpoint);
+
             String body = String.join("\n", metricLines);
             logger.debug("Sending lines:\n{}", body);
 
-            HttpSender.Request.Builder requestBuilder = httpClient.post(endpoint);
-            if (!ignoreToken) {
+            HttpSender.Request.Builder requestBuilder = httpClient.post(config.uri());
+            if (!shouldIgnoreToken(config)) {
                 requestBuilder.withHeader("Authorization", "Api-Token " + config.apiToken());
             }
 
