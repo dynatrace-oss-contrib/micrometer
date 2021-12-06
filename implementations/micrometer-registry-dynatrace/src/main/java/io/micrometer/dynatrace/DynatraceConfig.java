@@ -23,7 +23,6 @@ import io.micrometer.core.lang.Nullable;
 
 import java.util.Collections;
 import java.util.Map;
-import java.util.logging.Logger;
 
 import static io.micrometer.core.instrument.config.MeterRegistryConfigValidator.*;
 import static io.micrometer.core.instrument.config.validate.PropertyValidator.*;
