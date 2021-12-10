@@ -76,6 +76,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
     private boolean endpointIsInvalid(String uri) {
         try {
+            //noinspection ResultOfMethodCallIgnored
             URI.create(uri).toURL();
         } catch (IllegalArgumentException | MalformedURLException ex) {
             return true;
