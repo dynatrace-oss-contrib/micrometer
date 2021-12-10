@@ -61,6 +61,8 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     public DynatraceExporterV2(DynatraceConfig config, Clock clock, HttpSender httpClient) {
         super(config, clock, httpClient);
 
+        logger.info("Exporting to endpoint {}", config.uri());
+
         MetricBuilderFactory.MetricBuilderFactoryBuilder factoryBuilder = MetricBuilderFactory.builder()
                 .withPrefix(config.metricKeyPrefix())
                 .withDefaultDimensions(parseDefaultDimensions(config.defaultDimensions()));
@@ -72,12 +74,13 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         metricBuilderFactory = factoryBuilder.build();
     }
 
-    private void reportErrorIfEndpointSeemsInvalid(String uri) {
+    private boolean endpointIsInvalid(String uri) {
         try {
             URI.create(uri).toURL();
         } catch (IllegalArgumentException | MalformedURLException ex) {
-            logger.error("Invalid URI: {}", uri);
+            return true;
         }
+        return false;
     }
 
     private boolean shouldIgnoreToken(DynatraceConfig config) {
@@ -248,16 +251,18 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     }
 
     private void send(List<String> metricLines) {
+        String endpoint = config.uri();
+        if (endpointIsInvalid(endpoint)) {
+            logger.warn("Endpoint invalid. Skipping export... ({})", endpoint);
+            return;
+        }
         try {
-            String endpoint = config.uri();
-            reportErrorIfEndpointSeemsInvalid(endpoint);
-
             logger.debug("Sending {} lines to {}", metricLines.size(), endpoint);
 
             String body = String.join("\n", metricLines);
             logger.debug("Sending lines:\n{}", body);
 
-            HttpSender.Request.Builder requestBuilder = httpClient.post(config.uri());
+            HttpSender.Request.Builder requestBuilder = httpClient.post(endpoint);
             if (!shouldIgnoreToken(config)) {
                 requestBuilder.withHeader("Authorization", "Api-Token " + config.apiToken());
             }
