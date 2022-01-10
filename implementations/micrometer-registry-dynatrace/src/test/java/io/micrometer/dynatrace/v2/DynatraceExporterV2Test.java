@@ -241,6 +241,7 @@ class DynatraceExporterV2Test {
         assertThat(lines.get(0)).isEqualTo("my.timer,dt.metrics.source=micrometer gauge,min=60.0,max=60.0,sum=60.0,count=1 " + clock.wallTime());
 
         clock.add(config.step());
+        // Before the update to drop zero count lines, this would contain 1 line (with count=0), which is not desired.
         List<String> zeroCountLines = exporter.toTimerLine(timer).collect(Collectors.toList());
         assertThat(zeroCountLines).isEmpty();
     }
@@ -355,7 +356,7 @@ class DynatraceExporterV2Test {
         assertThat(nonEmptyLines.get(0)).isEqualTo("my.summary,dt.metrics.source=micrometer gauge,min=3.1,max=3.1,sum=3.1,count=1 " + clock.wallTime());
 
         clock.add(config.step());
-        // Before the fix, this would contain 1 line with count=0, which is not desired.
+        // Before the update to drop zero count lines, this would contain 1 line (with count=0), which is not desired.
         List<String> zeroCountLines = exporter.toDistributionSummaryLine(summary).collect(Collectors.toList());
         assertThat(zeroCountLines).isEmpty();
     }
