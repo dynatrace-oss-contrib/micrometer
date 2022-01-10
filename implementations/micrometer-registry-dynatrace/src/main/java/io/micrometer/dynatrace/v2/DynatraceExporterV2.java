@@ -222,7 +222,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     }
 
     Stream<String> toFunctionTimerLine(FunctionTimer meter) {
-        long count = Double.valueOf(meter.count()).longValue();
+        long count = (long) meter.count();
         if (count < 1) {
             logger.debug("Timer with 0 count dropped: %s", meter.getId().getName());
             return Stream.empty();
