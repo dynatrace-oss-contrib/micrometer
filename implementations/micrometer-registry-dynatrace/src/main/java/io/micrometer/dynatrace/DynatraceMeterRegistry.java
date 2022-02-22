@@ -57,6 +57,7 @@ import static io.micrometer.core.instrument.config.MeterFilterReply.NEUTRAL;
 public class DynatraceMeterRegistry extends StepMeterRegistry {
     private static final ThreadFactory DEFAULT_THREAD_FACTORY = new NamedThreadFactory("dynatrace-metrics-publisher");
     private static final InternalLogger logger = InternalLoggerFactory.getInstance(DynatraceMeterRegistry.class);
+    private final DynatraceApiVersion apiVersion;
 
     private final AbstractDynatraceExporter exporter;
 
@@ -68,9 +69,12 @@ public class DynatraceMeterRegistry extends StepMeterRegistry {
     private DynatraceMeterRegistry(DynatraceConfig config, Clock clock, ThreadFactory threadFactory, HttpSender httpClient) {
         super(config, clock);
 
-        if (config.apiVersion() == DynatraceApiVersion.V2) {
+        apiVersion = config.apiVersion();
+
+        if (apiVersion == DynatraceApiVersion.V2) {
             logger.info("Exporting to Dynatrace metrics API v2");
             this.exporter = new DynatraceExporterV2(config, clock, httpClient);
+            // Not used for Timer and DistributionSummary in V2 anymore, but still used for the other timer types.
             registerMinPercentile();
         } else {
             logger.info("Exporting to Dynatrace metrics API v1");
@@ -96,12 +100,18 @@ public class DynatraceMeterRegistry extends StepMeterRegistry {
 
     @Override
     protected DistributionSummary newDistributionSummary(Meter.Id id, DistributionStatisticConfig distributionStatisticConfig, double scale) {
-        return new DynatraceDistributionSummary(id, clock, distributionStatisticConfig, scale, false);
+        if (apiVersion == DynatraceApiVersion.V2) {
+            return new DynatraceDistributionSummary(id, clock, distributionStatisticConfig, scale, false);
+        }
+        return super.newDistributionSummary(id, distributionStatisticConfig, scale);
     }
 
     @Override
     protected Timer newTimer(Meter.Id id, DistributionStatisticConfig distributionStatisticConfig, PauseDetector pauseDetector) {
-        return new DynatraceTimer(id, clock, distributionStatisticConfig, pauseDetector, exporter.getBaseTimeUnit(), false);
+        if (apiVersion == DynatraceApiVersion.V2) {
+            return new DynatraceTimer(id, clock, distributionStatisticConfig, pauseDetector, exporter.getBaseTimeUnit(), false);
+        }
+        return super.newTimer(id, distributionStatisticConfig, pauseDetector);
     }
 
     /**
@@ -122,7 +132,7 @@ public class DynatraceMeterRegistry extends StepMeterRegistry {
                 double[] percentiles;
 
                 if (config.getPercentiles() == null) {
-                    percentiles = new double[] {0};
+                    percentiles = new double[]{0};
                     metersWithArtificialZeroPercentile.add(id.getName() + ".percentile");
                 } else if (!containsZeroPercentile(config)) {
                     percentiles = new double[config.getPercentiles().length + 1];
