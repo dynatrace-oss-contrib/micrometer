@@ -173,6 +173,11 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
     Stream<String> toTimerLine(Timer meter) {
         if (meter instanceof DynatraceSummarySnapshotSupport) {
+            if (!((DynatraceSummarySnapshotSupport) meter).hasNewValues()) {
+                // no new values in last export interval
+                return Stream.empty();
+            }
+            // Reset the distribution summary for the next export
             DynatraceSummarySnapshot snapshot = ((DynatraceSummarySnapshotSupport) meter).takeSummarySnapshotAndReset(getBaseTimeUnit());
             return createSummaryLine(meter, snapshot.getMin(), snapshot.getMax(), snapshot.getTotal(), snapshot.getCount());
         }
@@ -214,6 +219,11 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
     Stream<String> toDistributionSummaryLine(DistributionSummary meter) {
         if (meter instanceof DynatraceSummarySnapshotSupport) {
+            if (!((DynatraceSummarySnapshotSupport) meter).hasNewValues()) {
+                // no new values in last export interval
+                return Stream.empty();
+            }
+            // Reset the distribution summary for the next export
             DynatraceSummarySnapshot snapshot = ((DynatraceSummarySnapshotSupport) meter).takeSummarySnapshotAndReset();
             return createSummaryLine(meter, snapshot.getMin(), snapshot.getMax(), snapshot.getTotal(), snapshot.getCount());
         }

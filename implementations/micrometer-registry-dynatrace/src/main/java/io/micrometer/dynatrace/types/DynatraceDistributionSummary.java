@@ -57,6 +57,11 @@ public class DynatraceDistributionSummary extends AbstractMeter implements Distr
     }
 
     @Override
+    public boolean hasNewValues() {
+        return count() > 0;
+    }
+
+    @Override
     public DynatraceSummarySnapshot takeSummarySnapshot() {
         return summary.takeSummarySnapshot();
     }

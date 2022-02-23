@@ -18,6 +18,8 @@ package io.micrometer.dynatrace.types;
 import java.util.concurrent.TimeUnit;
 
 public interface DynatraceSummarySnapshotSupport {
+    boolean hasNewValues();
+
     DynatraceSummarySnapshot takeSummarySnapshot();
 
     DynatraceSummarySnapshot takeSummarySnapshot(TimeUnit unit);

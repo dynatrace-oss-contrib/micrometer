@@ -37,6 +37,11 @@ public class DynatraceTimer extends AbstractMeter implements Timer, DynatraceSum
     }
 
     @Override
+    public boolean hasNewValues() {
+        return count() > 0;
+    }
+
+    @Override
     public DynatraceSummarySnapshot takeSummarySnapshot() {
         return takeSummarySnapshot(baseTimeUnit());
     }
