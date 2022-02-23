@@ -27,8 +27,8 @@ import io.micrometer.core.util.internal.logging.InternalLoggerFactory;
 import io.micrometer.dynatrace.AbstractDynatraceExporter;
 import io.micrometer.dynatrace.DynatraceConfig;
 import io.micrometer.dynatrace.types.DynatraceDistributionSummary;
-import io.micrometer.dynatrace.types.DynatraceHistogramSnapshot;
-import io.micrometer.dynatrace.types.DynatraceTimer;
+import io.micrometer.dynatrace.types.DynatraceSummarySnapshot;
+import io.micrometer.dynatrace.types.DynatraceSummarySnapshotSupport;
 
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -172,8 +172,8 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     }
 
     Stream<String> toTimerLine(Timer meter) {
-        if (meter instanceof DynatraceTimer) {
-            DynatraceHistogramSnapshot snapshot = ((DynatraceTimer) meter).takeSnapshotAndReset(getBaseTimeUnit());
+        if (meter instanceof DynatraceSummarySnapshotSupport) {
+            DynatraceSummarySnapshot snapshot = ((DynatraceSummarySnapshotSupport) meter).takeSummarySnapshotAndReset(getBaseTimeUnit());
             return createSummaryLine(meter, snapshot.getMin(), snapshot.getMax(), snapshot.getTotal(), snapshot.getCount());
         }
         return toSummaryLine(meter, meter.takeSnapshot(), getBaseTimeUnit());
@@ -213,8 +213,8 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     }
 
     Stream<String> toDistributionSummaryLine(DistributionSummary meter) {
-        if (meter instanceof DynatraceDistributionSummary) {
-            DynatraceHistogramSnapshot snapshot = ((DynatraceDistributionSummary) meter).takeSnapshotAndReset();
+        if (meter instanceof DynatraceSummarySnapshotSupport) {
+            DynatraceSummarySnapshot snapshot = ((DynatraceSummarySnapshotSupport) meter).takeSummarySnapshotAndReset();
             return createSummaryLine(meter, snapshot.getMin(), snapshot.getMax(), snapshot.getTotal(), snapshot.getCount());
         }
         return toSummaryLine(meter, meter.takeSnapshot(), null);

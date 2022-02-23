@@ -22,66 +22,77 @@ import io.micrometer.core.instrument.distribution.pause.PauseDetector;
 import io.micrometer.core.lang.NonNull;
 
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.LongAdder;
 
-public class DynatraceTimer extends AbstractTimer {
-    private final LongAdder count = new LongAdder();
-    private final LongAdder total = new LongAdder();
-    private final AtomicLong max = new AtomicLong(0);
-    private final AtomicLong min = new AtomicLong(0);
+public class DynatraceTimer extends AbstractTimer implements DynatraceSummarySnapshotSupport {
+    private final DynatraceSummary summary = new DynatraceSummary();
 
     public DynatraceTimer(Id id, Clock clock, DistributionStatisticConfig distributionStatisticConfig, PauseDetector pauseDetector, TimeUnit baseTimeUnit, boolean supportsAggregablePercentiles) {
         super(id, clock, distributionStatisticConfig, pauseDetector, baseTimeUnit, supportsAggregablePercentiles);
     }
 
     @Override
-    protected void recordNonNegative(final long amount, @NonNull final TimeUnit unit) {
-        if (amount >= 0) {
-            long currCount = count.longValue();
-            long amountInBaseUnit = baseTimeUnit().convert(amount, unit);
+    public DynatraceSummarySnapshot takeSummarySnapshot() {
+        return takeSummarySnapshot(baseTimeUnit());
+    }
 
-            if (currCount == 0) {
-                max.set(amountInBaseUnit);
-                min.set(amountInBaseUnit);
-            } else {
-                max.getAndUpdate(prev -> (prev < amountInBaseUnit) ? amountInBaseUnit : prev);
-                min.getAndUpdate(prev -> (prev < amountInBaseUnit) ? prev : amountInBaseUnit);
-            }
-            count.increment();
-            total.add(amountInBaseUnit);
+    @Override
+    public DynatraceSummarySnapshot takeSummarySnapshot(TimeUnit unit) {
+        return convertSnapshotToUnit(summary.takeSummarySnapshot(), baseTimeUnit(), unit);
+    }
+
+
+    @Override
+    public DynatraceSummarySnapshot takeSummarySnapshotAndReset() {
+        return takeSummarySnapshot(baseTimeUnit());
+    }
+
+    @Override
+    public DynatraceSummarySnapshot takeSummarySnapshotAndReset(TimeUnit unit) {
+        DynatraceSummarySnapshot snapshot;
+        synchronized (this) {
+            snapshot = takeSummarySnapshot(unit);
+            summary.reset();
         }
-    }
-
-
-    public long count() {
-        return count.longValue();
-    }
-
-    @Override
-    public double totalTime(final TimeUnit unit) {
-        return unit.convert(total.sum(), baseTimeUnit());
-    }
-
-    @Override
-    public double max(final TimeUnit unit) {
-        return unit.convert(max.get(), baseTimeUnit());
-    }
-
-    public double min(final TimeUnit unit) {
-        return unit.convert(min.get(), baseTimeUnit());
-    }
-
-    public synchronized void reset() {
-        min.set(0);
-        max.set(0);
-        total.reset();
-        count.reset();
-    }
-
-    public synchronized DynatraceHistogramSnapshot takeSnapshotAndReset(final TimeUnit unit) {
-        DynatraceHistogramSnapshot snapshot = new DynatraceHistogramSnapshot(min(unit), max(unit), totalTime(unit), count());
-        this.reset();
         return snapshot;
+    }
+
+    @Override
+    protected void recordNonNegative(long amount, @NonNull TimeUnit unit) {
+        // store everything in baseTimeUnit
+        long inBaseUnit = baseTimeUnit().convert(amount, unit);
+        summary.recordNonNegative(inBaseUnit);
+    }
+
+    @Override
+    public long count() {
+        return summary.getCount();
+    }
+
+    @Override
+    public double totalTime(TimeUnit unit) {
+        return unit.convert((long) summary.getTotal(), baseTimeUnit());
+    }
+
+    @Override
+    public double max(TimeUnit unit) {
+        return unit.convert((long) summary.getMax(), baseTimeUnit());
+    }
+
+    public double min(TimeUnit unit) {
+        return unit.convert((long) summary.getMin(), baseTimeUnit());
+    }
+
+    private static DynatraceSummarySnapshot convertSnapshotToUnit(DynatraceSummarySnapshot snapshot, TimeUnit sourceUnit, TimeUnit targetUnit) {
+        if (targetUnit == sourceUnit) {
+            return snapshot;
+        }
+
+        // convert to the requested unit
+        return new DynatraceSummarySnapshot(
+                targetUnit.convert((long) snapshot.getMin(), sourceUnit),
+                targetUnit.convert((long) snapshot.getMax(), sourceUnit),
+                targetUnit.convert((long) snapshot.getTotal(), sourceUnit),
+                snapshot.getCount()
+        );
     }
 }

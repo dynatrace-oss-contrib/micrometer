@@ -15,33 +15,14 @@
  */
 package io.micrometer.dynatrace.types;
 
-public class DynatraceHistogramSnapshot {
-    double min;
-    double max;
-    double total;
-    long count;
+import java.util.concurrent.TimeUnit;
 
-    public DynatraceHistogramSnapshot(double min, double max, double total, long count) {
-        this.min = min;
-        this.max = max;
-        this.total = total;
-        this.count = count;
-    }
+public interface DynatraceSummarySnapshotSupport {
+    DynatraceSummarySnapshot takeSummarySnapshot();
 
-    public double getMin() {
-        return min;
-    }
+    DynatraceSummarySnapshot takeSummarySnapshot(TimeUnit unit);
 
-    public double getMax() {
-        return max;
-    }
+    DynatraceSummarySnapshot takeSummarySnapshotAndReset();
 
-    public double getTotal() {
-        return total;
-    }
-
-    public long getCount() {
-        return count;
-    }
+    DynatraceSummarySnapshot takeSummarySnapshotAndReset(TimeUnit unit);
 }
-
