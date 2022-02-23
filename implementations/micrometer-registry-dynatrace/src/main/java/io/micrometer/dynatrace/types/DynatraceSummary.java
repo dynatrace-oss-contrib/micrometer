@@ -35,19 +35,19 @@ public class DynatraceSummary {
         }
     }
 
-    public long getCount() {
+    public synchronized long getCount() {
         return count;
     }
 
-    public double getTotal() {
+    public synchronized double getTotal() {
         return total;
     }
 
-    public double getMin() {
+    public synchronized double getMin() {
         return min;
     }
 
-    public double getMax() {
+    public synchronized double getMax() {
         return max;
     }
 

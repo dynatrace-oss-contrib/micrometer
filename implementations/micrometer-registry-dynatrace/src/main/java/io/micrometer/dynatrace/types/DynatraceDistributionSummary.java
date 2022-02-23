@@ -21,7 +21,6 @@ import io.micrometer.core.instrument.distribution.HistogramSnapshot;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nonnull;
 import java.util.concurrent.TimeUnit;
 
 public class DynatraceDistributionSummary extends AbstractMeter implements DistributionSummary, DynatraceSummarySnapshotSupport {
