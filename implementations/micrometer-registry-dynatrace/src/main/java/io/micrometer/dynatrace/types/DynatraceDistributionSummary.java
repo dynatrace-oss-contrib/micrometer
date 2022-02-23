@@ -15,24 +15,25 @@
  */
 package io.micrometer.dynatrace.types;
 
-import io.micrometer.core.instrument.AbstractDistributionSummary;
-import io.micrometer.core.instrument.Clock;
-import io.micrometer.core.instrument.distribution.DistributionStatisticConfig;
+import io.micrometer.core.instrument.AbstractMeter;
+import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.distribution.HistogramSnapshot;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
 import java.util.concurrent.TimeUnit;
 
-public class DynatraceDistributionSummary extends AbstractDistributionSummary implements DynatraceSummarySnapshotSupport {
+public class DynatraceDistributionSummary extends AbstractMeter implements DistributionSummary, DynatraceSummarySnapshotSupport {
     private final DynatraceSummary summary = new DynatraceSummary();
     private static final Logger LOGGER = LoggerFactory.getLogger(DynatraceDistributionSummary.class.getName());
 
-    public DynatraceDistributionSummary(Id id, Clock clock, DistributionStatisticConfig distributionStatisticConfig, double scale, boolean supportsAggregablePercentiles) {
-        super(id, clock, distributionStatisticConfig, scale, supportsAggregablePercentiles);
+    public DynatraceDistributionSummary(Id id) {
+        super(id);
     }
 
     @Override
-    protected void recordNonNegative(double amount) {
+    public void record(double amount) {
         summary.recordNonNegative(amount);
     }
 
@@ -75,5 +76,12 @@ public class DynatraceDistributionSummary extends AbstractDistributionSummary im
     public DynatraceSummarySnapshot takeSummarySnapshotAndReset(TimeUnit unit) {
         LOGGER.debug("Called takeSummarySnapshot with a TimeUnit on a DistributionSummary. Ignoring TimeUnit.");
         return takeSummarySnapshotAndReset();
+    }
+
+    @Override
+    public HistogramSnapshot takeSnapshot() {
+        LOGGER.warn("Called takeSnapshot on a Dynatrace Distribution Summary, no percentiles will be exported.");
+        DynatraceSummarySnapshot dtSnapshot = takeSummarySnapshot();
+        return HistogramSnapshot.empty(dtSnapshot.getCount(), dtSnapshot.getTotal(), dtSnapshot.getMax());
     }
 }

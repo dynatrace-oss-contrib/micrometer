@@ -15,19 +15,25 @@
  */
 package io.micrometer.dynatrace.types;
 
-import io.micrometer.core.instrument.AbstractTimer;
+import io.micrometer.core.instrument.AbstractMeter;
 import io.micrometer.core.instrument.Clock;
-import io.micrometer.core.instrument.distribution.DistributionStatisticConfig;
-import io.micrometer.core.instrument.distribution.pause.PauseDetector;
-import io.micrometer.core.lang.NonNull;
+import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.distribution.HistogramSnapshot;
 
+import javax.annotation.Nonnull;
+import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
-public class DynatraceTimer extends AbstractTimer implements DynatraceSummarySnapshotSupport {
+public class DynatraceTimer extends AbstractMeter implements Timer, DynatraceSummarySnapshotSupport {
     private final DynatraceSummary summary = new DynatraceSummary();
+    private final Clock clock;
+    private final TimeUnit baseTimeUnit;
 
-    public DynatraceTimer(Id id, Clock clock, DistributionStatisticConfig distributionStatisticConfig, PauseDetector pauseDetector, TimeUnit baseTimeUnit, boolean supportsAggregablePercentiles) {
-        super(id, clock, distributionStatisticConfig, pauseDetector, baseTimeUnit, supportsAggregablePercentiles);
+    public DynatraceTimer(Id id, Clock clock, TimeUnit baseTimeUnit) {
+        super(id);
+        this.clock = clock;
+        this.baseTimeUnit = baseTimeUnit;
     }
 
     @Override
@@ -40,7 +46,6 @@ public class DynatraceTimer extends AbstractTimer implements DynatraceSummarySna
         return convertSnapshotToUnit(summary.takeSummarySnapshot(), baseTimeUnit(), unit);
     }
 
-
     @Override
     public DynatraceSummarySnapshot takeSummarySnapshotAndReset() {
         return takeSummarySnapshot(baseTimeUnit());
@@ -51,8 +56,44 @@ public class DynatraceTimer extends AbstractTimer implements DynatraceSummarySna
         return convertSnapshotToUnit(summary.takeSummarySnapshotAndReset(), baseTimeUnit(), unit);
     }
 
+    // from AbstractTimer
     @Override
-    protected void recordNonNegative(long amount, @NonNull TimeUnit unit) {
+    public <T> T recordCallable(Callable<T> f) throws Exception {
+        final long s = clock.monotonicTime();
+        try {
+            return f.call();
+        } finally {
+            final long e = clock.monotonicTime();
+            record(e - s, TimeUnit.NANOSECONDS);
+        }
+    }
+
+    // from AbstractTimer
+    @Override
+    public <T> T record(Supplier<T> f) {
+        final long s = clock.monotonicTime();
+        try {
+            return f.get();
+        } finally {
+            final long e = clock.monotonicTime();
+            record(e - s, TimeUnit.NANOSECONDS);
+        }
+    }
+
+    // from AbstractTimer
+    @Override
+    public void record(Runnable f) {
+        final long s = clock.monotonicTime();
+        try {
+            f.run();
+        } finally {
+            final long e = clock.monotonicTime();
+            record(e - s, TimeUnit.NANOSECONDS);
+        }
+    }
+
+    @Override
+    public final void record(long amount, TimeUnit unit) {
         // store everything in baseTimeUnit
         long inBaseUnit = baseTimeUnit().convert(amount, unit);
         summary.recordNonNegative(inBaseUnit);
@@ -73,6 +114,11 @@ public class DynatraceTimer extends AbstractTimer implements DynatraceSummarySna
         return unit.convert((long) summary.getMax(), baseTimeUnit());
     }
 
+    @Override
+    public TimeUnit baseTimeUnit() {
+        return baseTimeUnit;
+    }
+
     public double min(TimeUnit unit) {
         return unit.convert((long) summary.getMin(), baseTimeUnit());
     }
@@ -89,5 +135,11 @@ public class DynatraceTimer extends AbstractTimer implements DynatraceSummarySna
                 targetUnit.convert((long) snapshot.getTotal(), sourceUnit),
                 snapshot.getCount()
         );
+    }
+
+    @Override
+    public HistogramSnapshot takeSnapshot() {
+        DynatraceSummarySnapshot dtSnapshot = takeSummarySnapshot();
+        return HistogramSnapshot.empty(dtSnapshot.getCount(), dtSnapshot.getTotal(), dtSnapshot.getMax());
     }
 }
