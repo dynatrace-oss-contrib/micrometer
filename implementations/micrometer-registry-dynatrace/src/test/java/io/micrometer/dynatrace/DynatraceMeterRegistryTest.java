@@ -87,7 +87,7 @@ class DynatraceMeterRegistryTest {
                 .hasLineCount(3)
                 .contains("my.counter,dt.metrics.source=micrometer count,delta=12.0 " + clock.wallTime())
                 .contains("my.gauge,dt.metrics.source=micrometer gauge," + gauge.doubleValue() + " " + clock.wallTime())
-                .contains("my.timer,dt.metrics.source=micrometer gauge,min=0.0,max=42.0,sum=108.0,count=4 " + clock.wallTime());
+                .contains("my.timer,dt.metrics.source=micrometer gauge,min=12.0,max=42.0,sum=108.0,count=4 " + clock.wallTime());
     }
 
     @Test
