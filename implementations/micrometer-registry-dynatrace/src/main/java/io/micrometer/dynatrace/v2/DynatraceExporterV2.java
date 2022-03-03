@@ -26,7 +26,6 @@ import io.micrometer.core.util.internal.logging.InternalLogger;
 import io.micrometer.core.util.internal.logging.InternalLoggerFactory;
 import io.micrometer.dynatrace.AbstractDynatraceExporter;
 import io.micrometer.dynatrace.DynatraceConfig;
-import io.micrometer.dynatrace.types.DynatraceDistributionSummary;
 import io.micrometer.dynatrace.types.DynatraceSummarySnapshot;
 import io.micrometer.dynatrace.types.DynatraceSummarySnapshotSupport;
 
