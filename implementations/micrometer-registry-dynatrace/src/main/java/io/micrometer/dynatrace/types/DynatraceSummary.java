@@ -17,9 +17,9 @@ package io.micrometer.dynatrace.types;
 
 public class DynatraceSummary {
     private long count = 0;
-    private double total = 0.;
-    private double min = 0.;
-    private double max = 0.;
+    private double total = 0d;
+    private double min = 0d;
+    private double max = 0d;
 
     protected synchronized void recordNonNegative(double amount) {
         if (amount >= 0) {
@@ -52,9 +52,9 @@ public class DynatraceSummary {
     }
 
     synchronized void reset() {
-        min = 0.;
-        max = 0.;
-        total = 0.;
+        min = 0d;
+        max = 0d;
+        total = 0d;
         count = 0;
     }
 
