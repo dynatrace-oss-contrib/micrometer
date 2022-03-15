@@ -57,14 +57,4 @@ public class DynatraceSummary {
         total = 0d;
         count = 0;
     }
-
-    public synchronized DynatraceSummarySnapshot takeSummarySnapshot() {
-        return new DynatraceSummarySnapshot(min, max, total, count);
-    }
-
-    public synchronized DynatraceSummarySnapshot takeSummarySnapshotAndReset() {
-        DynatraceSummarySnapshot snapshot = takeSummarySnapshot();
-        this.reset();
-        return snapshot;
-    }
 }

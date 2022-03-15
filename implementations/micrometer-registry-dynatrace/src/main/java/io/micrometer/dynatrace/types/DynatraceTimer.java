@@ -47,17 +47,19 @@ public class DynatraceTimer extends AbstractMeter implements Timer, DynatraceSum
 
     @Override
     public DynatraceSummarySnapshot takeSummarySnapshot(TimeUnit unit) {
-        return convertSnapshotToUnit(summary.takeSummarySnapshot(), baseTimeUnit(), unit);
+        return new DynatraceSummarySnapshot(min(unit), max(unit), totalTime(unit), count());
     }
 
     @Override
     public DynatraceSummarySnapshot takeSummarySnapshotAndReset() {
-        return takeSummarySnapshot(baseTimeUnit());
+        return takeSummarySnapshotAndReset(baseTimeUnit());
     }
 
     @Override
     public DynatraceSummarySnapshot takeSummarySnapshotAndReset(TimeUnit unit) {
-        return convertSnapshotToUnit(summary.takeSummarySnapshotAndReset(), baseTimeUnit(), unit);
+        DynatraceSummarySnapshot snapshot = takeSummarySnapshot(unit);
+        summary.reset();
+        return snapshot;
     }
 
     // from AbstractTimer
@@ -125,20 +127,6 @@ public class DynatraceTimer extends AbstractMeter implements Timer, DynatraceSum
 
     public double min(TimeUnit unit) {
         return unit.convert((long) summary.getMin(), baseTimeUnit());
-    }
-
-    private static DynatraceSummarySnapshot convertSnapshotToUnit(DynatraceSummarySnapshot snapshot, TimeUnit sourceUnit, TimeUnit targetUnit) {
-        if (targetUnit == sourceUnit) {
-            return snapshot;
-        }
-
-        // convert to the requested unit
-        return new DynatraceSummarySnapshot(
-                targetUnit.convert((long) snapshot.getMin(), sourceUnit),
-                targetUnit.convert((long) snapshot.getMax(), sourceUnit),
-                targetUnit.convert((long) snapshot.getTotal(), sourceUnit),
-                snapshot.getCount()
-        );
     }
 
     @Override

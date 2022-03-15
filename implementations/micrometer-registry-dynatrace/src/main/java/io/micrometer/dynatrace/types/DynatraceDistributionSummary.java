@@ -62,7 +62,7 @@ public class DynatraceDistributionSummary extends AbstractMeter implements Distr
 
     @Override
     public DynatraceSummarySnapshot takeSummarySnapshot() {
-        return summary.takeSummarySnapshot();
+        return new DynatraceSummarySnapshot(min(), max(), totalAmount(), count());
     }
 
     @Override
@@ -73,7 +73,9 @@ public class DynatraceDistributionSummary extends AbstractMeter implements Distr
 
     @Override
     public DynatraceSummarySnapshot takeSummarySnapshotAndReset() {
-        return summary.takeSummarySnapshotAndReset();
+        DynatraceSummarySnapshot snapshot = takeSummarySnapshot();
+        summary.reset();
+        return snapshot;
     }
 
     @Override
