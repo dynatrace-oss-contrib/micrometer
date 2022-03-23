@@ -15,24 +15,25 @@
  */
 package io.micrometer.dynatrace.types;
 
-public class DynatraceSummary {
+class DynatraceSummary {
     private long count = 0;
     private double total = 0d;
     private double min = 0d;
     private double max = 0d;
 
     protected synchronized void recordNonNegative(double amount) {
-        if (amount >= 0) {
-            if (count == 0) {
-                min = amount;
-                max = amount;
-            } else {
-                min = Math.min(min, amount);
-                max = Math.max(max, amount);
-            }
-            count++;
-            total += amount;
+        if (amount < 0) {
+            return;
         }
+        if (count == 0) {
+            min = amount;
+            max = amount;
+        } else {
+            min = Math.min(min, amount);
+            max = Math.max(max, amount);
+        }
+        count++;
+        total += amount;
     }
 
     public synchronized long getCount() {

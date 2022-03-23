@@ -16,7 +16,6 @@
 package io.micrometer.dynatrace.v2;
 
 import com.dynatrace.metric.util.*;
-import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.*;
 import io.micrometer.core.instrument.distribution.HistogramSnapshot;
 import io.micrometer.core.instrument.distribution.ValueAtPercentile;
@@ -32,7 +31,10 @@ import io.micrometer.dynatrace.types.DynatraceSummarySnapshotSupport;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.time.Instant;
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.regex.Matcher;
@@ -79,8 +81,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         try {
             //noinspection ResultOfMethodCallIgnored
             URI.create(uri).toURL();
-        }
-        catch (IllegalArgumentException | MalformedURLException ex) {
+        } catch (IllegalArgumentException | MalformedURLException ex) {
             return false;
         }
 
@@ -101,9 +102,9 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
     private DimensionList parseDefaultDimensions(Map<String, String> defaultDimensions) {
         List<Dimension> dimensions = Stream.concat(
-                defaultDimensions.entrySet().stream(),
-                staticDimensions.entrySet().stream()
-        )
+                        defaultDimensions.entrySet().stream(),
+                        staticDimensions.entrySet().stream()
+                )
                 .map(entry -> Dimension.create(entry.getKey(), entry.getValue()))
                 .collect(Collectors.toList());
         return DimensionList.fromCollection(dimensions);
@@ -171,16 +172,19 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     }
 
     Stream<String> toTimerLine(Timer meter) {
-        if (meter instanceof DynatraceSummarySnapshotSupport) {
-            if (!((DynatraceSummarySnapshotSupport) meter).hasNewValues()) {
-                // no new values in last export interval
-                return Stream.empty();
-            }
-            // Reset the distribution summary for the next export
-            DynatraceSummarySnapshot snapshot = ((DynatraceSummarySnapshotSupport) meter).takeSummarySnapshotAndReset(getBaseTimeUnit());
-            return createSummaryLine(meter, snapshot.getMin(), snapshot.getMax(), snapshot.getTotal(), snapshot.getCount());
+        if (!(meter instanceof DynatraceSummarySnapshotSupport)) {
+            // fall back to previous behaviour
+            return toSummaryLine(meter, meter.takeSnapshot(), getBaseTimeUnit());
         }
-        return toSummaryLine(meter, meter.takeSnapshot(), getBaseTimeUnit());
+
+        DynatraceSummarySnapshotSupport summary = (DynatraceSummarySnapshotSupport) meter;
+        if (!summary.hasNewValues()) {
+            return Stream.empty();
+        }
+
+        // Take a snapshot and reset the Timer for the next export
+        DynatraceSummarySnapshot snapshot = summary.takeSummarySnapshotAndReset(getBaseTimeUnit());
+        return createSummaryLine(meter, snapshot.getMin(), snapshot.getMax(), snapshot.getTotal(), snapshot.getCount());
     }
 
     private Stream<String> toSummaryLine(Meter meter, HistogramSnapshot histogramSnapshot, TimeUnit timeUnit) {
@@ -217,16 +221,20 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     }
 
     Stream<String> toDistributionSummaryLine(DistributionSummary meter) {
-        if (meter instanceof DynatraceSummarySnapshotSupport) {
-            if (!((DynatraceSummarySnapshotSupport) meter).hasNewValues()) {
-                // no new values in last export interval
-                return Stream.empty();
-            }
-            // Reset the distribution summary for the next export
-            DynatraceSummarySnapshot snapshot = ((DynatraceSummarySnapshotSupport) meter).takeSummarySnapshotAndReset();
-            return createSummaryLine(meter, snapshot.getMin(), snapshot.getMax(), snapshot.getTotal(), snapshot.getCount());
+        if (!(meter instanceof DynatraceSummarySnapshotSupport)) {
+            // fall back to previous behaviour
+            return toSummaryLine(meter, meter.takeSnapshot(), null);
         }
-        return toSummaryLine(meter, meter.takeSnapshot(), null);
+
+        DynatraceSummarySnapshotSupport summary = (DynatraceSummarySnapshotSupport) meter;
+
+        if (!summary.hasNewValues()) {
+            return Stream.empty();
+        }
+
+        // Take a snapshot and reset the DistributionSummary for the next export
+        DynatraceSummarySnapshot snapshot = ((DynatraceSummarySnapshotSupport) meter).takeSummarySnapshotAndReset();
+        return createSummaryLine(meter, snapshot.getMin(), snapshot.getMax(), snapshot.getTotal(), snapshot.getCount());
     }
 
     Stream<String> toLongTaskTimerLine(LongTaskTimer meter) {
