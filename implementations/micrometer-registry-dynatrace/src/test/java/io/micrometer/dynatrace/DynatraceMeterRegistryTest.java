@@ -175,7 +175,7 @@ class DynatraceMeterRegistryTest {
         reset(httpClient);
         when(httpClient.post(config.uri())).thenReturn(builder);
 
-        // ---> second export interval, no values are recorded values
+        // ---> second export interval, no values are recorded
         clock.add(config.step());
         meterRegistry.publish();
 

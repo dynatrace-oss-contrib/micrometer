@@ -41,65 +41,7 @@ class DynatraceTimerTest {
         timer.record(Duration.ofMillis(314));
         assertThat(timer.hasNewValues()).isTrue();
 
-        // reset, hasNewValues should be initially false
-        timer.takeSummarySnapshotAndReset();
-        assertThat(timer.hasNewValues()).isFalse();
-
-        // add invalid value, hasNewValue stays false
-        timer.record(Duration.ofMillis(-1234));
-        assertThat(timer.hasNewValues()).isFalse();
-    }
-
-    @Test
-    void testDynatraceTimer() {
-        DynatraceTimer timer = new DynatraceTimer(ID, CLOCK, BASE_TIME_UNIT);
-        timer.record(Duration.ofMillis(314));
-        timer.record(Duration.ofMillis(476));
-
-        assertMinMaxSumCount(timer, 314, 476, 790, 2);
-    }
-
-    @Test
-    void testRecordNegativeIgnored() {
-        DynatraceTimer timer = new DynatraceTimer(ID, CLOCK, BASE_TIME_UNIT);
-        timer.record(Duration.ofMillis(314));
-        timer.record(Duration.ofMillis(-1234));
-        timer.record(Duration.ofMillis(476));
-        timer.record(Duration.ofMillis(-6789));
-
-        assertMinMaxSumCount(timer, 314, 476, 790, 2);
-    }
-
-    @Test
-    void testMinMaxAreOverwritten() {
-        DynatraceTimer timer = new DynatraceTimer(ID, CLOCK, BASE_TIME_UNIT);
-        timer.record(Duration.ofMillis(314));
-        timer.record(Duration.ofMillis(476));
-        timer.record(Duration.ofMillis(123));
-        timer.record(Duration.ofMillis(893));
-
-        assertMinMaxSumCount(timer, 123, 893, 1806, 4);
-    }
-
-    @Test
-    void testGetSnapshotNoReset() {
-        DynatraceTimer timer = new DynatraceTimer(ID, CLOCK, BASE_TIME_UNIT);
-        timer.record(Duration.ofMillis(314));
-        timer.record(Duration.ofMillis(476));
-
-        assertMinMaxSumCount(timer.takeSummarySnapshot(BASE_TIME_UNIT), 314, 476, 790, 2);
-        // check that the timer was not reset
-        assertMinMaxSumCount(timer.takeSummarySnapshot(BASE_TIME_UNIT), 314, 476, 790, 2);
-    }
-
-    @Test
-    void testGetSnapshotNoResetWithTimeUnitIgnored() {
-        DynatraceTimer timer = new DynatraceTimer(ID, CLOCK, BASE_TIME_UNIT);
-        // record in a time unit that is not the base time unit
-        timer.record(Duration.ofSeconds(1));
-        timer.record(Duration.ofSeconds(2));
-
-        // checks that the BaseTimeUnit that is used when setting up the instrument is used
+        // checks that the recorded values are returned in the TimeUnit used to set up the instrument
         assertMinMaxSumCount(timer.takeSummarySnapshot(), 1000, 2000, 3000, 2);
         // check that the timer was not reset
         assertMinMaxSumCount(timer.takeSummarySnapshot(), 1000, 2000, 3000, 2);
@@ -123,7 +65,7 @@ class DynatraceTimerTest {
         timer.record(Duration.ofSeconds(1));
         timer.record(Duration.ofSeconds(2));
 
-        // checks that the BaseTimeUnit that is used when setting up the instrument is used
+        // checks that the recorded values are returned in the TimeUnit used to set up the instrument
         assertMinMaxSumCount(timer.takeSummarySnapshotAndReset(), 1000, 2000, 3000, 2);
         // check that the timer was indeed reset
         assertMinMaxSumCount(timer.takeSummarySnapshot(), 0d, 0d, 0d, 0);
