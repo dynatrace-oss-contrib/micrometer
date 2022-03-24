@@ -15,13 +15,19 @@
  */
 package io.micrometer.dynatrace.types;
 
-class DynatraceSummary {
+/**
+ * Internal class for resettable summary statistics
+ *
+ * @author Georg Pirklbauer
+ * @since 1.9.0
+ */
+final class DynatraceSummary {
     private long count = 0;
     private double total = 0d;
     private double min = 0d;
     private double max = 0d;
 
-    protected synchronized void recordNonNegative(double amount) {
+    synchronized void recordNonNegative(double amount) {
         if (amount < 0) {
             return;
         }

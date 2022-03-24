@@ -24,7 +24,13 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
-public class DynatraceTimer extends AbstractMeter implements Timer, DynatraceSummarySnapshotSupport {
+/**
+ * Resettable {@link Timer} implementation for Dynatrace exporters.
+ *
+ * @author Georg Pirklbauer
+ * @since 1.9.0
+ */
+public final class DynatraceTimer extends AbstractMeter implements Timer, DynatraceSummarySnapshotSupport {
     private final DynatraceSummary summary = new DynatraceSummary();
     private final Clock clock;
     private final TimeUnit baseTimeUnit;
@@ -99,7 +105,7 @@ public class DynatraceTimer extends AbstractMeter implements Timer, DynatraceSum
     }
 
     @Override
-    public final void record(long amount, TimeUnit unit) {
+    public void record(long amount, TimeUnit unit) {
         // store everything in baseTimeUnit
         long inBaseUnit = baseTimeUnit().convert(amount, unit);
         summary.recordNonNegative(inBaseUnit);

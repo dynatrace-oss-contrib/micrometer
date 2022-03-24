@@ -23,7 +23,13 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeUnit;
 
-public class DynatraceDistributionSummary extends AbstractMeter implements DistributionSummary, DynatraceSummarySnapshotSupport {
+/**
+ * Resettable {@link DistributionSummary} implementation for Dynatrace exporters.
+ *
+ * @author Georg Pirklbauer
+ * @since 1.9.0
+ */
+public final class DynatraceDistributionSummary extends AbstractMeter implements DistributionSummary, DynatraceSummarySnapshotSupport {
     private final DynatraceSummary summary = new DynatraceSummary();
     private static final Logger LOGGER = LoggerFactory.getLogger(DynatraceDistributionSummary.class.getName());
 

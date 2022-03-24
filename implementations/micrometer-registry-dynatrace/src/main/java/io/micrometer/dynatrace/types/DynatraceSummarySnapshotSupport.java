@@ -17,6 +17,12 @@ package io.micrometer.dynatrace.types;
 
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Interface for retrieving a {@link DynatraceSummarySnapshot}.
+ *
+ * @author Georg Pirklbauer
+ * @since 1.9.0
+ */
 public interface DynatraceSummarySnapshotSupport {
     boolean hasNewValues();
 

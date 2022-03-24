@@ -17,8 +17,15 @@ package io.micrometer.dynatrace.types;
 
 import javax.annotation.concurrent.Immutable;
 
+
+/**
+ * Snapshot of a Dynatrace summary object.
+ *
+ * @author Georg Pirklbauer
+ * @since 1.9.0
+ */
 @Immutable
-public class DynatraceSummarySnapshot {
+public final class DynatraceSummarySnapshot {
     private final double min;
     private final double max;
     private final double total;
