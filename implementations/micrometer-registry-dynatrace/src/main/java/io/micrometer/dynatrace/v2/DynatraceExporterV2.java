@@ -178,7 +178,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         }
 
         DynatraceSummarySnapshotSupport summary = (DynatraceSummarySnapshotSupport) meter;
-        if (!summary.hasNewValues()) {
+        if (!summary.hasValues()) {
             return Stream.empty();
         }
 
@@ -228,7 +228,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
         DynatraceSummarySnapshotSupport summary = (DynatraceSummarySnapshotSupport) meter;
 
-        if (!summary.hasNewValues()) {
+        if (!summary.hasValues()) {
             return Stream.empty();
         }
 

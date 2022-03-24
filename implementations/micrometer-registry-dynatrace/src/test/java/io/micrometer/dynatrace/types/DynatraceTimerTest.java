@@ -41,16 +41,22 @@ class DynatraceTimerTest {
     private static final Meter.Id ID = new Meter.Id("test.id", Tags.empty(), "1", "desc", Meter.Type.TIMER);
 
     @Test
-    void testHasNewValues() {
+    void testHasValues() {
         DynatraceTimer timer = new DynatraceTimer(ID, CLOCK, BASE_TIME_UNIT);
-        assertThat(timer.hasNewValues()).isFalse();
+        assertThat(timer.hasValues()).isFalse();
         timer.record(Duration.ofMillis(314));
-        assertThat(timer.hasNewValues()).isTrue();
+        assertThat(timer.hasValues()).isTrue();
+        timer.record(Duration.ofMillis(476));
+        assertThat(timer.hasValues()).isTrue();
 
         // checks that the recorded values are returned in the TimeUnit used to set up the instrument
-        assertMinMaxSumCount(timer.takeSummarySnapshot(), 1000, 2000, 3000, 2);
-        // check that the timer was not reset
-        assertMinMaxSumCount(timer.takeSummarySnapshot(), 1000, 2000, 3000, 2);
+        assertMinMaxSumCount(timer, 314, 476, 790, 2);
+        assertThat(timer.hasValues()).isTrue();
+        assertMinMaxSumCount(timer.takeSummarySnapshotAndReset(), 314, 476, 790, 2);
+        assertThat(timer.hasValues()).isFalse();
+
+        timer.record(-100, TimeUnit.MILLISECONDS);
+        assertThat(timer.hasValues()).isFalse();
     }
 
     @Test

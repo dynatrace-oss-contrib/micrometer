@@ -42,7 +42,7 @@ public final class DynatraceTimer extends AbstractMeter implements Timer, Dynatr
     }
 
     @Override
-    public boolean hasNewValues() {
+    public boolean hasValues() {
         return count() > 0;
     }
 

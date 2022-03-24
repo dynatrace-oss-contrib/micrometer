@@ -35,19 +35,19 @@ class DynatraceDistributionSummaryTest {
     private static final Meter.Id ID = new Meter.Id("test.id", Tags.empty(), "1", "desc", Meter.Type.DISTRIBUTION_SUMMARY);
 
     @Test
-    void testHasNewValues() {
+    void testHasValues() {
         DynatraceDistributionSummary ds = new DynatraceDistributionSummary(ID);
-        assertThat(ds.hasNewValues()).isFalse();
+        assertThat(ds.hasValues()).isFalse();
         ds.record(3.14);
-        assertThat(ds.hasNewValues()).isTrue();
+        assertThat(ds.hasValues()).isTrue();
 
         // reset, hasNewValues should be initially false
         ds.takeSummarySnapshotAndReset();
-        assertThat(ds.hasNewValues()).isFalse();
+        assertThat(ds.hasValues()).isFalse();
 
         // add invalid value, hasNewValue stays false
         ds.record(-1.234);
-        assertThat(ds.hasNewValues()).isFalse();
+        assertThat(ds.hasValues()).isFalse();
     }
 
     @Test

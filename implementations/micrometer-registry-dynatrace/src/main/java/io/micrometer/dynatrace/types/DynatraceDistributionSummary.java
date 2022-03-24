@@ -62,7 +62,7 @@ public final class DynatraceDistributionSummary extends AbstractMeter implements
     }
 
     @Override
-    public boolean hasNewValues() {
+    public boolean hasValues() {
         return count() > 0;
     }
 
