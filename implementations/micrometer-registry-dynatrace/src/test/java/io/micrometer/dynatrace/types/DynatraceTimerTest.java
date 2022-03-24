@@ -27,6 +27,12 @@ import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
+/**
+ * Tests for {@link DynatraceTimer}.
+ *
+ * @author Georg Pirklbauer
+ * @since 1.9.0
+ */
 class DynatraceTimerTest {
 
     private static final Offset<Double> OFFSET = Offset.offset(0.0001);

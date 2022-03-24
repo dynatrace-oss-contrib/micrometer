@@ -24,6 +24,12 @@ import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
+/**
+ * Tests for {@link DynatraceDistributionSummary}.
+ *
+ * @author Georg Pirklbauer
+ * @since 1.9.0
+ */
 class DynatraceDistributionSummaryTest {
     private static final Offset<Double> OFFSET = Offset.offset(0.0001);
     private static final Meter.Id ID = new Meter.Id("test.id", Tags.empty(), "1", "desc", Meter.Type.DISTRIBUTION_SUMMARY);
