@@ -41,11 +41,11 @@ class DynatraceDistributionSummaryTest {
         ds.record(3.14);
         assertThat(ds.hasValues()).isTrue();
 
-        // reset, hasNewValues should be initially false
+        // reset, hasValues should be initially false
         ds.takeSummarySnapshotAndReset();
         assertThat(ds.hasValues()).isFalse();
 
-        // add invalid value, hasNewValue stays false
+        // add invalid value, hasValues stays false
         ds.record(-1.234);
         assertThat(ds.hasValues()).isFalse();
     }
