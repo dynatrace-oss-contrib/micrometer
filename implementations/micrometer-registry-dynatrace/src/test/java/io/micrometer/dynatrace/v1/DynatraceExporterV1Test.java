@@ -16,7 +16,6 @@
 package io.micrometer.dynatrace.v1;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.micrometer.common.util.internal.logging.LogEvent;
 import io.micrometer.common.util.internal.logging.MockLogger;
 import io.micrometer.common.util.internal.logging.MockLoggerFactory;
 import io.micrometer.core.instrument.*;
