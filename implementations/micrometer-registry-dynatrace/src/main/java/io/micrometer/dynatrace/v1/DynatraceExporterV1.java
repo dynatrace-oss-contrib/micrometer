@@ -200,7 +200,8 @@ public class DynatraceExporterV1 extends AbstractDynatraceExporter {
         }
         catch (Throwable e) {
             if (logger.isErrorEnabled()) {
-                logger.error("failed to create custom metric in Dynatrace: " + customMetric.getMetricId(), redactToken(e));
+                logger.error("failed to create custom metric in Dynatrace: " + customMetric.getMetricId(),
+                        redactToken(e));
             }
         }
     }
@@ -282,10 +283,12 @@ public class DynatraceExporterV1 extends AbstractDynatraceExporter {
     }
 
     /**
-     * Redacts the API token from a thrown exception before printing the exception message.
+     * Redacts the API token from a thrown exception before printing the exception
+     * message.
      * @param t the original {@link Throwable}
-     * @return the original {@link Throwable} if it does not contain the API token or a new {@link Throwable} with the
-     *  message with the token redacted and same stack trace as the original Throwable.
+     * @return the original {@link Throwable} if it does not contain the API token or a
+     * new {@link Throwable} with the message with the token redacted and same stack trace
+     * as the original Throwable.
      */
     private Throwable redactToken(Throwable t) {
         if (!t.getMessage().contains(config.apiToken())) {
