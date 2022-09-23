@@ -291,7 +291,7 @@ public class DynatraceExporterV1 extends AbstractDynatraceExporter {
      * as the original Throwable.
      */
     private Throwable redactToken(Throwable t) {
-        if (!t.getMessage().contains(config.apiToken())) {
+        if (t.getMessage() != null && !t.getMessage().contains(config.apiToken())) {
             return t;
         }
 
