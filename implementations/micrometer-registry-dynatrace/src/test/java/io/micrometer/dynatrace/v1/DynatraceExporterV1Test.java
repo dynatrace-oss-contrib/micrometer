@@ -16,6 +16,7 @@
 package io.micrometer.dynatrace.v1;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.common.util.internal.logging.LogEvent;
 import io.micrometer.common.util.internal.logging.MockLogger;
 import io.micrometer.common.util.internal.logging.MockLoggerFactory;
 import io.micrometer.core.instrument.*;
@@ -43,8 +44,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.isA;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 /**
  * Tests for {@link DynatraceExporterV1}.
@@ -271,8 +271,8 @@ class DynatraceExporterV1Test {
                 // Max bytes: 15330 (excluding header/footer, 15360 with header/footer)
                 Arrays.asList(createTimeSeriesWithDimensions(750), // 14861 bytes
                         createTimeSeriesWithDimensions(23, "asdfg"), // 469 bytes
-                                                                     // (overflows due to
-                                                                     // comma)
+                        // (overflows due to
+                        // comma)
                         createTimeSeriesWithDimensions(750), // 14861 bytes
                         createTimeSeriesWithDimensions(22, "asd") // 468 bytes + comma
                 ));
@@ -291,8 +291,8 @@ class DynatraceExporterV1Test {
                 Arrays.asList(createTimeSeriesWithDimensions(750), // 14861 bytes
                         createTimeSeriesWithDimensions(10, "asdf"), // 234 bytes + comma
                         createTimeSeriesWithDimensions(10, "asdf") // 234 bytes + comma =
-                                                                   // 15331 bytes
-                                                                   // (overflow)
+                // 15331 bytes
+                // (overflow)
                 ));
         assertThat(messages).hasSize(2);
         assertThat(messages.get(0).metricCount).isEqualTo(2);
@@ -384,6 +384,72 @@ class DynatraceExporterV1Test {
         assertThat(LOGGER.getLogEvents().get(1).getMessage())
                 .isEqualTo("failed to send metrics to Dynatrace: Error Code=500, Response Body=simulated");
         assertThat(LOGGER.getLogEvents().get(1).getCause()).isNull();
+    }
+
+    @Test
+    void testTokenShouldBeRedacted() throws Throwable {
+        HttpSender httpClient = mock(HttpSender.class);
+        HttpSender.Request.Builder builder = HttpSender.Request.build("https://localhost", httpClient);
+        when(httpClient.send(isA(HttpSender.Request.class))).thenReturn(new HttpSender.Response(200, null));
+
+        String invalidUrl = "http://localhost";
+        String apiToken = "this.is.a.fake.apiToken";
+
+        String exceptionTextPattern = "Mocked exception with API token %s contained in it";
+
+        when(httpClient.put(anyString()))
+                // throw on the first try
+                .thenThrow(new IllegalArgumentException(String.format(exceptionTextPattern, apiToken)))
+                // succeed the second time
+                .thenReturn(builder);
+
+        when(httpClient.post(anyString()))
+                .thenThrow(new IllegalArgumentException(String.format(exceptionTextPattern, apiToken)));
+
+        DynatraceExporterV1 exporter = FACTORY.injectLogger(() -> new DynatraceExporterV1(new DynatraceConfig() {
+            @Override
+            public String get(String key) {
+                return null;
+            }
+
+            @Override
+            public String apiToken() {
+                return apiToken;
+            }
+
+            @Override
+            public String uri() {
+                return invalidUrl;
+            }
+        }, clock, httpClient));
+
+        meterRegistry.gauge("my.gauge", GAUGE_VALUE);
+        Gauge gauge = meterRegistry.find("my.gauge").gauge();
+        // first export fails on creation
+        exporter.export(Collections.singletonList(gauge));
+        // second exports succeeds on creation but fails on export
+        exporter.export(Collections.singletonList(gauge));
+
+        // check that the methods were called once
+        verify(httpClient, times(2)).put(anyString());
+        verify(httpClient).post(anyString());
+
+        assertThat(LOGGER.getLogEvents())
+                // filter for log events that have a cause (these are the ones with
+                // exceptions)
+                .filteredOn(x -> x.getCause() != null)
+                // get the exception message
+                .extracting(x -> x.getCause().getMessage())
+                // The cause on the exception has the redacted token
+                .contains(String.format(exceptionTextPattern, "<redacted>"))
+                // There is no cause on an exception that has the token in it.
+                .doesNotContain(String.format(exceptionTextPattern, apiToken));
+
+        assertThat(LOGGER.getLogEvents())
+                // stringify objects
+                .extracting(x -> x.toString())
+                // ensure the API token appears nowhere
+                .noneMatch(x -> x.contains(apiToken));
     }
 
     private DynatraceExporterV1 createExporter(HttpSender httpClient) {
