@@ -200,7 +200,7 @@ public class DynatraceExporterV1 extends AbstractDynatraceExporter {
         }
         catch (Throwable e) {
             if (logger.isErrorEnabled()) {
-                logger.error("failed to create custom metric in Dynatrace: " + customMetric.getMetricId(), e);
+                logger.error("failed to create custom metric in Dynatrace: " + customMetric.getMetricId(), redactToken(e));
             }
         }
     }
@@ -223,7 +223,9 @@ public class DynatraceExporterV1 extends AbstractDynatraceExporter {
             }
         }
         catch (Throwable e) {
-            logger.error("failed to send metrics to Dynatrace", e);
+            if (logger.isErrorEnabled()) {
+                logger.error("failed to send metrics to Dynatrace", redactToken(e));
+            }
         }
     }
 
@@ -277,6 +279,22 @@ public class DynatraceExporterV1 extends AbstractDynatraceExporter {
 
     private Meter.Id idWithSuffix(Meter.Id id, String suffix) {
         return id.withName(id.getName() + "." + suffix);
+    }
+
+    /**
+     * Redacts the API token from a thrown exception before printing the exception message.
+     * @param t the original {@link Throwable}
+     * @return the original {@link Throwable} if it does not contain the API token or a new {@link Throwable} with the
+     *  message with the token redacted and same stack trace as the original Throwable.
+     */
+    private Throwable redactToken(Throwable t) {
+        if (!t.getMessage().contains(config.apiToken())) {
+            return t;
+        }
+
+        Throwable throwable = new Throwable(t.getMessage().replace(config.apiToken(), "<redacted>"));
+        throwable.setStackTrace(t.getStackTrace());
+        return throwable;
     }
 
 }
