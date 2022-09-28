@@ -187,47 +187,79 @@ public class DynatraceExporterV1 extends AbstractDynatraceExporter {
 
     // VisibleForTesting
     void putCustomMetric(final DynatraceMetricDefinition customMetric) {
+        HttpSender.Request.Builder requestBuilder;
         try {
-            httpClient
+            requestBuilder = httpClient
                     .put(customMetricEndpointTemplate + customMetric.getMetricId() + "?api-token=" + config.apiToken())
-                    .withJsonContent(customMetric.asJson()).send().onSuccess(response -> {
-                        logger.debug("created {} as custom metric in Dynatrace", customMetric.getMetricId());
-                        createdCustomMetrics.add(customMetric.getMetricId());
-                    })
-                    .onError(response -> logger.error(
-                            "failed to create custom metric {} in Dynatrace: Error Code={}, Response Body={}",
-                            customMetric.getMetricId(), response.code(), response.body()));
+                    .withJsonContent(customMetric.asJson());
         }
-        catch (Throwable e) {
+        catch (Exception ex) {
+            // log only the error message without the token
             if (logger.isErrorEnabled()) {
-                logger.error("failed to create custom metric in Dynatrace: " + customMetric.getMetricId(),
-                        redactToken(e));
+                logger.error("failed to build request: {}", redactToken(ex.getMessage()));
             }
+            // do not attempt to export if the creation of the request already failed
+            return;
+        }
+
+        HttpSender.Response httpResponse = trySendHttpRequest(requestBuilder);
+
+        if (httpResponse != null) {
+            httpResponse.onSuccess(response -> {
+                logger.debug("created {} as custom metric in Dynatrace", customMetric.getMetricId());
+                createdCustomMetrics.add(customMetric.getMetricId());
+            }).onError(response -> logger.error(
+                    "failed to create custom metric {} in Dynatrace: Error Code={}, Response Body={}",
+                    customMetric.getMetricId(), response.code(), response.body()));
         }
     }
 
     private void postCustomMetricValues(String type, String group, List<DynatraceTimeSeries> timeSeries,
             String customDeviceMetricEndpoint) {
-        try {
-            for (DynatraceBatchedPayload postMessage : createPostMessages(type, group, timeSeries)) {
-                httpClient.post(customDeviceMetricEndpoint).withJsonContent(postMessage.payload).send()
-                        .onSuccess(response -> {
-                            if (logger.isDebugEnabled()) {
-                                logger.debug("successfully sent {} metrics to Dynatrace ({} bytes).",
-                                        postMessage.metricCount, postMessage.payload.getBytes(UTF_8).length);
-                            }
-                        }).onError(response -> {
-                            logger.error("failed to send metrics to Dynatrace: Error Code={}, Response Body={}",
-                                    response.code(), response.body());
-                            logger.debug("failed metrics payload: {}", postMessage.payload);
-                        });
+        for (DynatraceBatchedPayload postMessage : createPostMessages(type, group, timeSeries)) {
+            HttpSender.Request.Builder requestBuilder;
+            try {
+                requestBuilder = httpClient.post(customDeviceMetricEndpoint).withJsonContent(postMessage.payload);
             }
+            catch (Exception ex) {
+                if (logger.isErrorEnabled()) {
+                    logger.error("failed to build request: {}", redactToken(ex.getMessage()));
+                }
+                // don't export the other data points, since the endpoint will always be
+                // invalid.
+                return;
+            }
+
+            HttpSender.Response httpResponse = trySendHttpRequest(requestBuilder);
+
+            if (httpResponse != null) {
+                httpResponse.onSuccess(response -> {
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("successfully sent {} metrics to Dynatrace ({} bytes).", postMessage.metricCount,
+                                postMessage.payload.getBytes(UTF_8).length);
+                    }
+                }).onError(response -> {
+                    logger.error("failed to send metrics to Dynatrace: Error Code={}, Response Body={}",
+                            response.code(), response.body());
+                    logger.debug("failed metrics payload: {}", postMessage.payload);
+                });
+            }
+        }
+    }
+
+    // VisibleForTesting
+    HttpSender.Response trySendHttpRequest(HttpSender.Request.Builder requestBuilder) {
+        HttpSender.Response httpResponse;
+        try {
+            httpResponse = requestBuilder.send();
         }
         catch (Throwable e) {
             if (logger.isErrorEnabled()) {
-                logger.error("failed to send metrics to Dynatrace", redactToken(e));
+                logger.error("failed to send metrics to Dynatrace: {}", redactToken(e.getMessage()));
             }
+            return null;
         }
+        return httpResponse;
     }
 
     // VisibleForTesting
@@ -282,22 +314,8 @@ public class DynatraceExporterV1 extends AbstractDynatraceExporter {
         return id.withName(id.getName() + "." + suffix);
     }
 
-    /**
-     * Redacts the API token from a thrown exception before printing the exception
-     * message.
-     * @param t the original {@link Throwable}
-     * @return the original {@link Throwable} if it does not contain the API token or a
-     * new {@link Throwable} with the message with the token redacted and same stack trace
-     * as the original Throwable.
-     */
-    private Throwable redactToken(Throwable t) {
-        if (t.getMessage() != null && !t.getMessage().contains(config.apiToken())) {
-            return t;
-        }
-
-        Throwable throwable = new Throwable(t.getMessage().replace(config.apiToken(), "<redacted>"));
-        throwable.setStackTrace(t.getStackTrace());
-        return throwable;
+    private String redactToken(String s) {
+        return s.replace(config.apiToken(), "<redacted>");
     }
 
 }
