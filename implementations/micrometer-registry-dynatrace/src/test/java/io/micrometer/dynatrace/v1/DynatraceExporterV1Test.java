@@ -386,7 +386,7 @@ class DynatraceExporterV1Test {
     }
 
     @Test
-    void testTokenShouldBeRedactedInPut() {
+    void testTokenShouldBeRedactedInPutFailure() {
         HttpSender httpClient = spy(HttpSender.class);
 
         String invalidUrl = "http://localhost###";
@@ -396,7 +396,7 @@ class DynatraceExporterV1Test {
 
         meterRegistry.gauge("my.gauge", GAUGE_VALUE);
         Gauge gauge = meterRegistry.find("my.gauge").gauge();
-        // first export fails on creation
+
         exporter.export(Collections.singletonList(gauge));
 
         assertThat(LOGGER.getLogEvents())
@@ -408,7 +408,7 @@ class DynatraceExporterV1Test {
     }
 
     @Test
-    void testTokenShouldBeRedactedInPost() throws Throwable {
+    void testTokenShouldBeRedactedInPostFailure() throws Throwable {
         HttpSender httpClient = spy(HttpSender.class);
 
         String invalidUrl = "http://localhost###";
@@ -423,13 +423,13 @@ class DynatraceExporterV1Test {
 
         meterRegistry.gauge("my.gauge", GAUGE_VALUE);
         Gauge gauge = meterRegistry.find("my.gauge").gauge();
-        // first export fails on creation
+
         exporter.export(Collections.singletonList(gauge));
 
         assertThat(LOGGER.getLogEvents())
                 // map to only keep the message strings
                 .extracting(LogEvent::getMessage).containsExactly(
-                        // the custom metric was created, meaning the PUT call succeded
+                        // the custom metric was created, meaning the PUT call succeeded
                         "created custom:my.gauge as custom metric in Dynatrace",
                         // the POST call now threw, and the token is redacted.
                         String.format(
