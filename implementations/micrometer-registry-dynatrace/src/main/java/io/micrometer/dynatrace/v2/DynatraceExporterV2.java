@@ -71,6 +71,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     private final InternalLogger logger = InternalLoggerFactory.getInstance(DynatraceExporterV2.class);
 
     private final MetricBuilderFactory metricBuilderFactory;
+
     private final boolean silentlyDropNaNGauge;
 
     public DynatraceExporterV2(DynatraceConfig config, Clock clock, HttpSender httpClient) {
@@ -88,9 +89,11 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
         metricBuilderFactory = factoryBuilder.build();
 
-        // Silently drop gauges for which the target of the weak reference has been garbage collected.
+        // Silently drop gauges for which the target of the weak reference has been
+        // garbage collected.
         String silentlyDropGaugeWithNoBacking = System.getenv("SILENTLY_DROP_NAN_GAUGE");
-        this.silentlyDropNaNGauge = !(silentlyDropGaugeWithNoBacking != null && silentlyDropGaugeWithNoBacking.equalsIgnoreCase("false"));
+        this.silentlyDropNaNGauge = !(silentlyDropGaugeWithNoBacking != null
+                && silentlyDropGaugeWithNoBacking.equalsIgnoreCase("false"));
         if (this.silentlyDropNaNGauge) {
             logger.debug("Gauges for which the backing field has been garbage collected will be dropped silently.");
         }
