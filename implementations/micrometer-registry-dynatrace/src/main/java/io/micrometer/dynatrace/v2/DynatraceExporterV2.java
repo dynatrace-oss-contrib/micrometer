@@ -71,6 +71,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     private final InternalLogger logger = InternalLoggerFactory.getInstance(DynatraceExporterV2.class);
 
     private final MetricBuilderFactory metricBuilderFactory;
+    private final boolean silentlyDropNaNGauge;
 
     public DynatraceExporterV2(DynatraceConfig config, Clock clock, HttpSender httpClient) {
         super(config, clock, httpClient);
@@ -86,6 +87,13 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         }
 
         metricBuilderFactory = factoryBuilder.build();
+
+        // Silently drop gauges for which the target of the weak reference has been garbage collected.
+        String silentlyDropGaugeWithNoBacking = System.getenv("SILENTLY_DROP_NAN_GAUGE");
+        this.silentlyDropNaNGauge = !(silentlyDropGaugeWithNoBacking != null && silentlyDropGaugeWithNoBacking.equalsIgnoreCase("false"));
+        if (this.silentlyDropNaNGauge) {
+            logger.debug("Gauges for which the backing field has been garbage collected will be dropped silently.");
+        }
     }
 
     private boolean isValidEndpoint(String uri) {
@@ -155,7 +163,11 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
     private String createGaugeLine(Meter meter, Measurement measurement) {
         try {
-            return createMetricBuilder(meter).setDoubleGaugeValue(measurement.getValue()).serialize();
+            double value = measurement.getValue();
+            if (this.silentlyDropNaNGauge && Double.isNaN(value)) {
+                return null;
+            }
+            return createMetricBuilder(meter).setDoubleGaugeValue(value).serialize();
         }
         catch (MetricException e) {
             logger.warn(METER_EXCEPTION_LOG_FORMAT, meter.getId().getName(), e.getMessage());
