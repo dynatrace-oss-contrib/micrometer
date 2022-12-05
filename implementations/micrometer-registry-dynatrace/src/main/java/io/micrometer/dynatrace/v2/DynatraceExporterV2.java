@@ -89,11 +89,11 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
         metricBuilderFactory = factoryBuilder.build();
 
-        // Silently drop gauges for which the target of the weak reference has been
-        // garbage collected.
-        String silentlyDropGaugeWithNoBacking = System.getenv("MICROMETER_DT_SILENTLY_DROP_NAN_GAUGE");
-        this.silentlyDropNaNGauge = !(silentlyDropGaugeWithNoBacking != null
-                && silentlyDropGaugeWithNoBacking.equalsIgnoreCase("false"));
+        // Silently drop gauges that return NaN (e.g. if the target of the weak reference
+        // had been garbage collected).
+        String silentlyDropNaNGaugeEnvVar = System.getenv("MICROMETER_DT_SILENTLY_DROP_NAN_GAUGE");
+        this.silentlyDropNaNGauge = silentlyDropNaNGaugeEnvVar != null
+                && silentlyDropNaNGaugeEnvVar.equalsIgnoreCase("true");
         if (this.silentlyDropNaNGauge) {
             logger.debug("Gauges with a value of NaN will be dropped silently.");
         }
