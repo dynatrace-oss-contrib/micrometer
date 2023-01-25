@@ -87,7 +87,10 @@ public final class DynatraceDistributionSummary extends AbstractDistributionSumm
 
     @Override
     public DynatraceSummarySnapshot takeSummarySnapshot() {
-        return new DynatraceSummarySnapshot(min(), max(), totalAmount(), count());
+        // make sure the Summary object does not change while taking the snapshot
+        synchronized (summary) {
+            return new DynatraceSummarySnapshot(min(), max(), totalAmount(), count());
+        }
     }
 
     @Override
@@ -98,9 +101,11 @@ public final class DynatraceDistributionSummary extends AbstractDistributionSumm
 
     @Override
     public DynatraceSummarySnapshot takeSummarySnapshotAndReset() {
-        DynatraceSummarySnapshot snapshot = takeSummarySnapshot();
-        summary.reset();
-        return snapshot;
+        synchronized (summary) {
+            DynatraceSummarySnapshot snapshot = takeSummarySnapshot();
+            summary.reset();
+            return snapshot;
+        }
     }
 
     @Override
