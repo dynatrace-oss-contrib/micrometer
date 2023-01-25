@@ -67,7 +67,9 @@ public final class DynatraceTimer extends AbstractTimer implements DynatraceSumm
 
     @Override
     public DynatraceSummarySnapshot takeSummarySnapshot(TimeUnit unit) {
-        return new DynatraceSummarySnapshot(min(unit), max(unit), totalTime(unit), count());
+        synchronized (summary) {
+            return new DynatraceSummarySnapshot(min(unit), max(unit), totalTime(unit), count());
+        }
     }
 
     @Override
@@ -77,9 +79,11 @@ public final class DynatraceTimer extends AbstractTimer implements DynatraceSumm
 
     @Override
     public DynatraceSummarySnapshot takeSummarySnapshotAndReset(TimeUnit unit) {
-        DynatraceSummarySnapshot snapshot = takeSummarySnapshot(unit);
-        summary.reset();
-        return snapshot;
+        synchronized (summary) {
+            DynatraceSummarySnapshot snapshot = takeSummarySnapshot(unit);
+            summary.reset();
+            return snapshot;
+        }
     }
 
     @Override
