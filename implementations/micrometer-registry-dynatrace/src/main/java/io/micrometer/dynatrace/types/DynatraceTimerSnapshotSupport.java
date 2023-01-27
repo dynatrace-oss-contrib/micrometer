@@ -7,4 +7,5 @@ public interface DynatraceTimerSnapshotSupport {
     DynatraceSummarySnapshot getSnapshot(TimeUnit unit);
 
     DynatraceSummarySnapshot getSnapshotAndReset(TimeUnit unit);
+
 }

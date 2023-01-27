@@ -131,9 +131,8 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
      * API will be dropped and not exported. If the number of serialized data points
      * exceeds the maximum number of allowed data points per request they will be sent in
      * chunks.
-     *
      * @param meters A list of {@link Meter Meters} that are serialized as one or more
-     *               metric lines.
+     * metric lines.
      */
     @Override
     public void export(List<Meter> meters) {
@@ -176,7 +175,8 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
                 return null;
             }
             return createMetricBuilder(meter).setDoubleGaugeValue(value).serialize();
-        } catch (MetricException e) {
+        }
+        catch (MetricException e) {
             logger.warn(METER_EXCEPTION_LOG_FORMAT, meter.getId().getName(), e.getMessage());
         }
 
@@ -190,7 +190,8 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     private String createCounterLine(Meter meter, Measurement measurement) {
         try {
             return createMetricBuilder(meter).setDoubleCounterValueDelta(measurement.getValue()).serialize();
-        } catch (MetricException e) {
+        }
+        catch (MetricException e) {
             logger.warn(METER_EXCEPTION_LOG_FORMAT, meter.getId().getName(), e.getMessage());
         }
 
@@ -202,7 +203,8 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
             return toSummaryLine(meter, meter.takeSnapshot(), getBaseTimeUnit());
         }
 
-        DynatraceSummarySnapshot snapshot = ((DynatraceTimerSnapshotSupport) meter).getSnapshotAndReset(getBaseTimeUnit());
+        DynatraceSummarySnapshot snapshot = ((DynatraceTimerSnapshotSupport) meter)
+                .getSnapshotAndReset(getBaseTimeUnit());
 
         if (snapshot.getCount() == 0) {
             return Stream.empty();
@@ -237,7 +239,8 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         try {
             String line = createMetricBuilder(meter).setDoubleSummaryValue(min, max, total, count).serialize();
             return Stream.of(line);
-        } catch (MetricException e) {
+        }
+        catch (MetricException e) {
             logger.warn(METER_EXCEPTION_LOG_FORMAT, meter.getId().getName(), e.getMessage());
         }
 
@@ -326,7 +329,8 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
                     .onSuccess(response -> handleSuccess(metricLines.size(), response))
                     .onError(response -> logger.error("Failed metric ingestion: Error Code={}, Response Body={}",
                             response.code(), getTruncatedBody(response)));
-        } catch (Throwable throwable) {
+        }
+        catch (Throwable throwable) {
             logger.warn("Failed metric ingestion: " + throwable);
             stackTraceWarnThenDebugLogger.log("Stack trace for previous 'Failed metric ingestion' warning log: ",
                     throwable);
@@ -345,13 +349,16 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
                 if (linesOkMatchResult.find() && linesInvalidMatchResult.find()) {
                     logger.debug("Sent {} metric lines, linesOk: {}, linesInvalid: {}.", totalSent,
                             linesOkMatchResult.group(1), linesInvalidMatchResult.group(1));
-                } else {
+                }
+                else {
                     logger.warn("Unable to parse response: {}", getTruncatedBody(response));
                 }
-            } else {
+            }
+            else {
                 logger.warn("Unable to parse response: {}", getTruncatedBody(response));
             }
-        } else {
+        }
+        else {
             // common pitfall if URI is supplied in V1 format (without endpoint path)
             logger.error(
                     "Expected status code 202, got {}.\nResponse Body={}\nDid you specify the ingest path (e.g.: /api/v2/metrics/ingest)?",

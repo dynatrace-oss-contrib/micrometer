@@ -43,7 +43,7 @@ public final class DynatraceTimer extends AbstractTimer implements DynatraceTime
     private final DynatraceSummary summary = new DynatraceSummary();
 
     public DynatraceTimer(Id id, Clock clock, DistributionStatisticConfig distributionStatisticConfig,
-                          PauseDetector pauseDetector, TimeUnit baseTimeUnit) {
+            PauseDetector pauseDetector, TimeUnit baseTimeUnit) {
         // make sure the Histogram in AbstractTimer is always a NoopHistogram by disabling
         // the respective config options
         super(id, clock, distributionStatisticConfig.merge(NOOP_HISTOGRAM_CONFIG), pauseDetector, baseTimeUnit, false);
@@ -92,22 +92,19 @@ public final class DynatraceTimer extends AbstractTimer implements DynatraceTime
         return convertIfNecessary(unit, summary.getSnapshot());
     }
 
-
     private DynatraceSummarySnapshot convertIfNecessary(TimeUnit unit, DynatraceSummarySnapshot snapshot) {
         if (unit == baseTimeUnit()) {
             return snapshot;
         }
 
-        return new DynatraceSummarySnapshot(
-                unit.convert((long) snapshot.getMin(), baseTimeUnit()),
+        return new DynatraceSummarySnapshot(unit.convert((long) snapshot.getMin(), baseTimeUnit()),
                 unit.convert((long) snapshot.getMax(), baseTimeUnit()),
-                unit.convert((long) snapshot.getTotal(), baseTimeUnit()),
-                snapshot.getCount()
-        );
+                unit.convert((long) snapshot.getTotal(), baseTimeUnit()), snapshot.getCount());
     }
 
     @Override
     public DynatraceSummarySnapshot getSnapshotAndReset(TimeUnit unit) {
         return convertIfNecessary(unit, summary.getSnapshotAndReset());
     }
+
 }

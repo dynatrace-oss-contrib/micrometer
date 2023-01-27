@@ -94,4 +94,5 @@ public final class DynatraceDistributionSummary extends AbstractDistributionSumm
     public DynatraceSummarySnapshot getSnapshotAndReset() {
         return summary.getSnapshotAndReset();
     }
+
 }

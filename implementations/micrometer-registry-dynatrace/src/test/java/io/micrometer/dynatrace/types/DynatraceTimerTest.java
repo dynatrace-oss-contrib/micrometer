@@ -67,7 +67,8 @@ class DynatraceTimerTest {
 
     @Test
     void testTimerValuesAreRecorded() {
-        DynatraceTimer timer = new DynatraceTimer(ID, CLOCK, DISTRIBUTION_STATISTIC_CONFIG, PAUSE_DETECTOR, BASE_TIME_UNIT);
+        DynatraceTimer timer = new DynatraceTimer(ID, CLOCK, DISTRIBUTION_STATISTIC_CONFIG, PAUSE_DETECTOR,
+                BASE_TIME_UNIT);
 
         timer.record(Duration.ofMillis(314));
         timer.record(Duration.ofMillis(476));
@@ -162,7 +163,7 @@ class DynatraceTimerTest {
     }
 
     private void assertMinMaxSumCount(DynatraceTimer timer, double expMin, double expMax, double expTotal,
-                                      long expCount) {
+            long expCount) {
         assertThat(timer.min(BASE_TIME_UNIT)).isCloseTo(expMin, OFFSET);
         assertThat(timer.max(BASE_TIME_UNIT)).isCloseTo(expMax, OFFSET);
         assertThat(timer.totalTime(BASE_TIME_UNIT)).isCloseTo(expTotal, OFFSET);
@@ -170,7 +171,7 @@ class DynatraceTimerTest {
     }
 
     private void assertMinMaxSumCount(DynatraceSummarySnapshot snapshot, double expMin, double expMax, double expTotal,
-                                      long expCount) {
+            long expCount) {
         assertThat(snapshot.getMin()).isCloseTo(expMin, OFFSET);
         assertThat(snapshot.getMax()).isCloseTo(expMax, OFFSET);
         assertThat(snapshot.getTotal()).isCloseTo(expTotal, OFFSET);
