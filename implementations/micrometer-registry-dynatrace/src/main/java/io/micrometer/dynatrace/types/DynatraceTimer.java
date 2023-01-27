@@ -32,7 +32,7 @@ import java.util.concurrent.TimeUnit;
  * @author Georg Pirklbauer
  * @since 1.9.0
  */
-public final class DynatraceTimer extends AbstractTimer implements DynatraceSummarySnapshotSupport {
+public final class DynatraceTimer extends AbstractTimer implements DynatraceTimerSnapshotSupport {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DynatraceTimer.class);
 
@@ -43,7 +43,7 @@ public final class DynatraceTimer extends AbstractTimer implements DynatraceSumm
     private final DynatraceSummary summary = new DynatraceSummary();
 
     public DynatraceTimer(Id id, Clock clock, DistributionStatisticConfig distributionStatisticConfig,
-            PauseDetector pauseDetector, TimeUnit baseTimeUnit) {
+                          PauseDetector pauseDetector, TimeUnit baseTimeUnit) {
         // make sure the Histogram in AbstractTimer is always a NoopHistogram by disabling
         // the respective config options
         super(id, clock, distributionStatisticConfig.merge(NOOP_HISTOGRAM_CONFIG), pauseDetector, baseTimeUnit, false);
@@ -52,37 +52,6 @@ public final class DynatraceTimer extends AbstractTimer implements DynatraceSumm
                 || distributionStatisticConfig.isPublishingHistogram()) {
             LOGGER.warn(
                     "Histogram config on DistributionStatisticConfig is currently ignored. Collecting summary statistics.");
-        }
-    }
-
-    @Override
-    public boolean hasValues() {
-        return count() > 0;
-    }
-
-    @Override
-    public DynatraceSummarySnapshot takeSummarySnapshot() {
-        return takeSummarySnapshot(baseTimeUnit());
-    }
-
-    @Override
-    public DynatraceSummarySnapshot takeSummarySnapshot(TimeUnit unit) {
-        synchronized (summary) {
-            return new DynatraceSummarySnapshot(min(unit), max(unit), totalTime(unit), count());
-        }
-    }
-
-    @Override
-    public DynatraceSummarySnapshot takeSummarySnapshotAndReset() {
-        return takeSummarySnapshotAndReset(baseTimeUnit());
-    }
-
-    @Override
-    public DynatraceSummarySnapshot takeSummarySnapshotAndReset(TimeUnit unit) {
-        synchronized (summary) {
-            DynatraceSummarySnapshot snapshot = takeSummarySnapshot(unit);
-            summary.reset();
-            return snapshot;
         }
     }
 
@@ -114,8 +83,31 @@ public final class DynatraceTimer extends AbstractTimer implements DynatraceSumm
 
     @Override
     public HistogramSnapshot takeSnapshot() {
-        DynatraceSummarySnapshot dtSnapshot = takeSummarySnapshot();
+        DynatraceSummarySnapshot dtSnapshot = getSnapshot(baseTimeUnit());
         return HistogramSnapshot.empty(dtSnapshot.getCount(), dtSnapshot.getTotal(), dtSnapshot.getMax());
     }
 
+    @Override
+    public DynatraceSummarySnapshot getSnapshot(TimeUnit unit) {
+        return convertIfNecessary(unit, summary.getSnapshot());
+    }
+
+
+    private DynatraceSummarySnapshot convertIfNecessary(TimeUnit unit, DynatraceSummarySnapshot snapshot) {
+        if (unit == baseTimeUnit()) {
+            return snapshot;
+        }
+
+        return new DynatraceSummarySnapshot(
+                unit.convert((long) snapshot.getMin(), baseTimeUnit()),
+                unit.convert((long) snapshot.getMax(), baseTimeUnit()),
+                unit.convert((long) snapshot.getTotal(), baseTimeUnit()),
+                snapshot.getCount()
+        );
+    }
+
+    @Override
+    public DynatraceSummarySnapshot getSnapshotAndReset(TimeUnit unit) {
+        return convertIfNecessary(unit, summary.getSnapshotAndReset());
+    }
 }

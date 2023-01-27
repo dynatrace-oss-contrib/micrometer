@@ -23,8 +23,6 @@ import io.micrometer.core.instrument.distribution.HistogramSnapshot;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.TimeUnit;
-
 /**
  * Resettable {@link DistributionSummary} implementation for Dynatrace exporters.
  *
@@ -32,7 +30,7 @@ import java.util.concurrent.TimeUnit;
  * @since 1.9.0
  */
 public final class DynatraceDistributionSummary extends AbstractDistributionSummary
-        implements DynatraceSummarySnapshotSupport {
+        implements DynatraceSnapshotSupport {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DynatraceDistributionSummary.class);
 
@@ -81,44 +79,19 @@ public final class DynatraceDistributionSummary extends AbstractDistributionSumm
     }
 
     @Override
-    public boolean hasValues() {
-        return count() > 0;
-    }
-
-    @Override
-    public DynatraceSummarySnapshot takeSummarySnapshot() {
-        // make sure the Summary object does not change while taking the snapshot
-        synchronized (summary) {
-            return new DynatraceSummarySnapshot(min(), max(), totalAmount(), count());
-        }
-    }
-
-    @Override
-    public DynatraceSummarySnapshot takeSummarySnapshot(TimeUnit timeUnit) {
-        LOGGER.debug("Called takeSummarySnapshot with a TimeUnit on a DistributionSummary. Ignoring TimeUnit.");
-        return takeSummarySnapshot();
-    }
-
-    @Override
-    public DynatraceSummarySnapshot takeSummarySnapshotAndReset() {
-        synchronized (summary) {
-            DynatraceSummarySnapshot snapshot = takeSummarySnapshot();
-            summary.reset();
-            return snapshot;
-        }
-    }
-
-    @Override
-    public DynatraceSummarySnapshot takeSummarySnapshotAndReset(TimeUnit unit) {
-        LOGGER.debug("Called takeSummarySnapshotAndReset with a TimeUnit on a DistributionSummary. Ignoring TimeUnit.");
-        return takeSummarySnapshotAndReset();
-    }
-
-    @Override
     public HistogramSnapshot takeSnapshot() {
         LOGGER.warn("Called takeSnapshot on a Dynatrace Distribution Summary, no percentiles will be exported.");
-        DynatraceSummarySnapshot dtSnapshot = takeSummarySnapshot();
+        DynatraceSummarySnapshot dtSnapshot = getSnapshot();
         return HistogramSnapshot.empty(dtSnapshot.getCount(), dtSnapshot.getTotal(), dtSnapshot.getMax());
     }
 
+    @Override
+    public DynatraceSummarySnapshot getSnapshot() {
+        return summary.getSnapshot();
+    }
+
+    @Override
+    public DynatraceSummarySnapshot getSnapshotAndReset() {
+        return summary.getSnapshotAndReset();
+    }
 }
