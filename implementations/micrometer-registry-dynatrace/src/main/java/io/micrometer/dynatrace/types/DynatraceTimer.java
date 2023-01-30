@@ -32,7 +32,7 @@ import java.util.concurrent.TimeUnit;
  * @author Georg Pirklbauer
  * @since 1.9.0
  */
-public final class DynatraceTimer extends AbstractTimer implements DynatraceTimerSnapshotSupport {
+public final class DynatraceTimer extends AbstractTimer implements TimeAwareDynatraceSummarySnapshotSupport {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DynatraceTimer.class);
 

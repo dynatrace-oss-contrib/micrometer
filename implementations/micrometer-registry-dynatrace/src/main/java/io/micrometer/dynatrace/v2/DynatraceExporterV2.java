@@ -28,8 +28,8 @@ import io.micrometer.core.util.internal.logging.WarnThenDebugLogger;
 import io.micrometer.dynatrace.AbstractDynatraceExporter;
 import io.micrometer.dynatrace.DynatraceConfig;
 import io.micrometer.dynatrace.types.DynatraceSummarySnapshot;
-import io.micrometer.dynatrace.types.DynatraceSnapshotSupport;
-import io.micrometer.dynatrace.types.DynatraceTimerSnapshotSupport;
+import io.micrometer.dynatrace.types.DynatraceSummarySnapshotSupport;
+import io.micrometer.dynatrace.types.TimeAwareDynatraceSummarySnapshotSupport;
 
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -199,11 +199,11 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     }
 
     Stream<String> toTimerLine(Timer meter) {
-        if (!(meter instanceof DynatraceTimerSnapshotSupport)) {
+        if (!(meter instanceof TimeAwareDynatraceSummarySnapshotSupport)) {
             return toSummaryLine(meter, meter.takeSnapshot(), getBaseTimeUnit());
         }
 
-        DynatraceSummarySnapshot snapshot = ((DynatraceTimerSnapshotSupport) meter)
+        DynatraceSummarySnapshot snapshot = ((TimeAwareDynatraceSummarySnapshotSupport) meter)
                 .getSnapshotAndReset(getBaseTimeUnit());
 
         if (snapshot.getCount() == 0) {
@@ -248,11 +248,11 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     }
 
     Stream<String> toDistributionSummaryLine(DistributionSummary meter) {
-        if (!(meter instanceof DynatraceSnapshotSupport)) {
+        if (!(meter instanceof DynatraceSummarySnapshotSupport)) {
             return toSummaryLine(meter, meter.takeSnapshot(), null);
         }
 
-        DynatraceSummarySnapshot snapshot = ((DynatraceSnapshotSupport) meter).getSnapshotAndReset();
+        DynatraceSummarySnapshot snapshot = ((DynatraceSummarySnapshotSupport) meter).getSnapshotAndReset();
 
         if (snapshot.getCount() == 0) {
             return Stream.empty();

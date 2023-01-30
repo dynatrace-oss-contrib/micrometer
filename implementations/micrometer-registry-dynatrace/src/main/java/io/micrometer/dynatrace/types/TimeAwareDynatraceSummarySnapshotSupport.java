@@ -17,7 +17,7 @@ package io.micrometer.dynatrace.types;
 
 import java.util.concurrent.TimeUnit;
 
-public interface DynatraceTimerSnapshotSupport {
+public interface TimeAwareDynatraceSummarySnapshotSupport {
 
     DynatraceSummarySnapshot getSnapshot(TimeUnit unit);
 

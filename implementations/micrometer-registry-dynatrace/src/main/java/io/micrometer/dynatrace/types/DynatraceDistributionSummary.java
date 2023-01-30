@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory;
  * @since 1.9.0
  */
 public final class DynatraceDistributionSummary extends AbstractDistributionSummary
-        implements DynatraceSnapshotSupport {
+        implements DynatraceSummarySnapshotSupport {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DynatraceDistributionSummary.class);
 
