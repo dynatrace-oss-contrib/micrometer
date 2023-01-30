@@ -56,6 +56,26 @@ public final class DynatraceTimer extends AbstractTimer implements TimeAwareDyna
     }
 
     @Override
+    public DynatraceSummarySnapshot takeSummarySnapshot(TimeUnit unit) {
+        return convertIfNecessary(unit, summary.takeSummarySnapshot());
+    }
+
+    private DynatraceSummarySnapshot convertIfNecessary(TimeUnit unit, DynatraceSummarySnapshot snapshot) {
+        if (unit == baseTimeUnit()) {
+            return snapshot;
+        }
+
+        return new DynatraceSummarySnapshot(unit.convert((long) snapshot.getMin(), baseTimeUnit()),
+                unit.convert((long) snapshot.getMax(), baseTimeUnit()),
+                unit.convert((long) snapshot.getTotal(), baseTimeUnit()), snapshot.getCount());
+    }
+
+    @Override
+    public DynatraceSummarySnapshot takeSummarySnapshotAndReset(TimeUnit unit) {
+        return convertIfNecessary(unit, summary.takeSummarySnapshotAndReset());
+    }
+
+    @Override
     protected void recordNonNegative(long amount, TimeUnit unit) {
         // store everything in baseTimeUnit
         long inBaseUnit = baseTimeUnit().convert(amount, unit);
@@ -79,26 +99,6 @@ public final class DynatraceTimer extends AbstractTimer implements TimeAwareDyna
 
     public double min(TimeUnit unit) {
         return unit.convert((long) summary.getMin(), baseTimeUnit());
-    }
-
-    @Override
-    public DynatraceSummarySnapshot takeSummarySnapshot(TimeUnit unit) {
-        return convertIfNecessary(unit, summary.takeSummarySnapshot());
-    }
-
-    private DynatraceSummarySnapshot convertIfNecessary(TimeUnit unit, DynatraceSummarySnapshot snapshot) {
-        if (unit == baseTimeUnit()) {
-            return snapshot;
-        }
-
-        return new DynatraceSummarySnapshot(unit.convert((long) snapshot.getMin(), baseTimeUnit()),
-                unit.convert((long) snapshot.getMax(), baseTimeUnit()),
-                unit.convert((long) snapshot.getTotal(), baseTimeUnit()), snapshot.getCount());
-    }
-
-    @Override
-    public DynatraceSummarySnapshot takeSummarySnapshotAndReset(TimeUnit unit) {
-        return convertIfNecessary(unit, summary.takeSummarySnapshotAndReset());
     }
 
     @Override
