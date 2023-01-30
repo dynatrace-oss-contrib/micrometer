@@ -19,8 +19,8 @@ import java.util.concurrent.TimeUnit;
 
 public interface TimeAwareDynatraceSummarySnapshotSupport {
 
-    DynatraceSummarySnapshot getSnapshot(TimeUnit unit);
+    DynatraceSummarySnapshot takeSummarySnapshot(TimeUnit unit);
 
-    DynatraceSummarySnapshot getSnapshotAndReset(TimeUnit unit);
+    DynatraceSummarySnapshot takeSummarySnapshotAndReset(TimeUnit unit);
 
 }

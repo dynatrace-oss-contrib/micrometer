@@ -17,8 +17,8 @@ package io.micrometer.dynatrace.types;
 
 public interface DynatraceSummarySnapshotSupport {
 
-    DynatraceSummarySnapshot getSnapshot();
+    DynatraceSummarySnapshot takeSummarySnapshot();
 
-    DynatraceSummarySnapshot getSnapshotAndReset();
+    DynatraceSummarySnapshot takeSummarySnapshotAndReset();
 
 }

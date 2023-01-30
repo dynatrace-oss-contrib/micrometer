@@ -83,13 +83,13 @@ public final class DynatraceTimer extends AbstractTimer implements TimeAwareDyna
 
     @Override
     public HistogramSnapshot takeSnapshot() {
-        DynatraceSummarySnapshot dtSnapshot = getSnapshot(baseTimeUnit());
+        DynatraceSummarySnapshot dtSnapshot = takeSummarySnapshot(baseTimeUnit());
         return HistogramSnapshot.empty(dtSnapshot.getCount(), dtSnapshot.getTotal(), dtSnapshot.getMax());
     }
 
     @Override
-    public DynatraceSummarySnapshot getSnapshot(TimeUnit unit) {
-        return convertIfNecessary(unit, summary.getSnapshot());
+    public DynatraceSummarySnapshot takeSummarySnapshot(TimeUnit unit) {
+        return convertIfNecessary(unit, summary.takeSummarySnapshot());
     }
 
     private DynatraceSummarySnapshot convertIfNecessary(TimeUnit unit, DynatraceSummarySnapshot snapshot) {
@@ -103,8 +103,8 @@ public final class DynatraceTimer extends AbstractTimer implements TimeAwareDyna
     }
 
     @Override
-    public DynatraceSummarySnapshot getSnapshotAndReset(TimeUnit unit) {
-        return convertIfNecessary(unit, summary.getSnapshotAndReset());
+    public DynatraceSummarySnapshot takeSummarySnapshotAndReset(TimeUnit unit) {
+        return convertIfNecessary(unit, summary.takeSummarySnapshotAndReset());
     }
 
 }

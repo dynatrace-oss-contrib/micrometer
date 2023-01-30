@@ -67,15 +67,15 @@ final class DynatraceSummary {
         return Double.longBitsToDouble(max.longValue());
     }
 
-    DynatraceSummarySnapshot getSnapshot() {
+    DynatraceSummarySnapshot takeSummarySnapshot() {
         synchronized (this) {
             return new DynatraceSummarySnapshot(getMin(), getMax(), getTotal(), getCount());
         }
     }
 
-    DynatraceSummarySnapshot getSnapshotAndReset() {
+    DynatraceSummarySnapshot takeSummarySnapshotAndReset() {
         synchronized (this) {
-            DynatraceSummarySnapshot snapshot = getSnapshot();
+            DynatraceSummarySnapshot snapshot = takeSummarySnapshot();
             reset();
             return snapshot;
         }

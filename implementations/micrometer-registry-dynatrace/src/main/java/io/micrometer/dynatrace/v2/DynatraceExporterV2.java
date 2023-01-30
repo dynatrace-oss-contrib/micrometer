@@ -204,7 +204,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         }
 
         DynatraceSummarySnapshot snapshot = ((TimeAwareDynatraceSummarySnapshotSupport) meter)
-                .getSnapshotAndReset(getBaseTimeUnit());
+                .takeSummarySnapshotAndReset(getBaseTimeUnit());
 
         if (snapshot.getCount() == 0) {
             return Stream.empty();
@@ -252,7 +252,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
             return toSummaryLine(meter, meter.takeSnapshot(), null);
         }
 
-        DynatraceSummarySnapshot snapshot = ((DynatraceSummarySnapshotSupport) meter).getSnapshotAndReset();
+        DynatraceSummarySnapshot snapshot = ((DynatraceSummarySnapshotSupport) meter).takeSummarySnapshotAndReset();
 
         if (snapshot.getCount() == 0) {
             return Stream.empty();
