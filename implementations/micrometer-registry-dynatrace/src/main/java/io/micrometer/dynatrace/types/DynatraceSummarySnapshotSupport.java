@@ -15,6 +15,12 @@
  */
 package io.micrometer.dynatrace.types;
 
+/**
+ * Interface for retrieving a {@link DynatraceSummarySnapshot}.
+ *
+ * @author Georg Pirklbauer
+ * @since 1.9.0
+ */
 public interface DynatraceSummarySnapshotSupport {
 
     DynatraceSummarySnapshot takeSummarySnapshot();

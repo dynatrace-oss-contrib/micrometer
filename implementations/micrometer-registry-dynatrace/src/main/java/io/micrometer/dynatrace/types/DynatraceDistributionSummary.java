@@ -79,13 +79,6 @@ public final class DynatraceDistributionSummary extends AbstractDistributionSumm
     }
 
     @Override
-    public HistogramSnapshot takeSnapshot() {
-        LOGGER.warn("Called takeSnapshot on a Dynatrace Distribution Summary, no percentiles will be exported.");
-        DynatraceSummarySnapshot dtSnapshot = takeSummarySnapshot();
-        return HistogramSnapshot.empty(dtSnapshot.getCount(), dtSnapshot.getTotal(), dtSnapshot.getMax());
-    }
-
-    @Override
     public DynatraceSummarySnapshot takeSummarySnapshot() {
         return summary.takeSummarySnapshot();
     }
@@ -93,6 +86,13 @@ public final class DynatraceDistributionSummary extends AbstractDistributionSumm
     @Override
     public DynatraceSummarySnapshot takeSummarySnapshotAndReset() {
         return summary.takeSummarySnapshotAndReset();
+    }
+
+    @Override
+    public HistogramSnapshot takeSnapshot() {
+        LOGGER.warn("Called takeSnapshot on a Dynatrace Distribution Summary, no percentiles will be exported.");
+        DynatraceSummarySnapshot dtSnapshot = takeSummarySnapshot();
+        return HistogramSnapshot.empty(dtSnapshot.getCount(), dtSnapshot.getTotal(), dtSnapshot.getMax());
     }
 
 }

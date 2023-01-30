@@ -51,7 +51,7 @@ class DynatraceDistributionSummaryTest {
         ds.record(5.6);
         assertThat(ds.count()).isEqualTo(2);
 
-        ds.getSnapshotAndReset();
+        ds.takeSummarySnapshotAndReset();
         assertThat(ds.count()).isZero();
     }
 
@@ -103,7 +103,7 @@ class DynatraceDistributionSummaryTest {
         ds.record(3.14);
         ds.record(4.76);
 
-        assertMinMaxSumCount(ds.getSnapshot(), 3.14, 4.76, 7.9, 2);
+        assertMinMaxSumCount(ds.takeSummarySnapshot(), 3.14, 4.76, 7.9, 2);
         // check the distribution summary was reset.
         assertMinMaxSumCount(ds, 3.14, 4.76, 7.9, 2);
     }
@@ -114,7 +114,7 @@ class DynatraceDistributionSummaryTest {
         ds.record(3.14);
         ds.record(4.76);
 
-        assertMinMaxSumCount(ds.getSnapshotAndReset(), 3.14, 4.76, 7.9, 2);
+        assertMinMaxSumCount(ds.takeSummarySnapshotAndReset(), 3.14, 4.76, 7.9, 2);
         assertMinMaxSumCount(ds, 0d, 0d, 0d, 0);
     }
 
