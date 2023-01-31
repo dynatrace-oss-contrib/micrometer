@@ -15,6 +15,8 @@
  */
 package io.micrometer.dynatrace.types;
 
+import java.util.concurrent.TimeUnit;
+
 /**
  * Interface for retrieving a {@link DynatraceSummarySnapshot}.
  *
@@ -26,5 +28,17 @@ public interface DynatraceSummarySnapshotSupport {
     DynatraceSummarySnapshot takeSummarySnapshot();
 
     DynatraceSummarySnapshot takeSummarySnapshotAndReset();
+
+    DynatraceSummarySnapshot takeSummarySnapshot(TimeUnit unit);
+
+    DynatraceSummarySnapshot takeSummarySnapshotAndReset(TimeUnit unit);
+
+    /**
+     * @deprecated This method might lead to problems with a race condition if values are
+     * added to the summary after reading the number of values already recorded
+     * @return true if there are already values recorded, and false otherwise.
+     */
+    @Deprecated()
+    boolean hasValues();
 
 }

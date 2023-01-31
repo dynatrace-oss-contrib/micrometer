@@ -32,7 +32,7 @@ import java.util.concurrent.TimeUnit;
  * @author Georg Pirklbauer
  * @since 1.9.0
  */
-public final class DynatraceTimer extends AbstractTimer implements TimeAwareDynatraceSummarySnapshotSupport {
+public final class DynatraceTimer extends AbstractTimer implements DynatraceSummarySnapshotSupport {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DynatraceTimer.class);
 
@@ -56,6 +56,16 @@ public final class DynatraceTimer extends AbstractTimer implements TimeAwareDyna
     }
 
     @Override
+    public DynatraceSummarySnapshot takeSummarySnapshot() {
+        return takeSummarySnapshot(baseTimeUnit());
+    }
+
+    @Override
+    public DynatraceSummarySnapshot takeSummarySnapshotAndReset() {
+        return takeSummarySnapshotAndReset(baseTimeUnit());
+    }
+
+    @Override
     public DynatraceSummarySnapshot takeSummarySnapshot(TimeUnit unit) {
         return convertIfNecessary(unit, summary.takeSummarySnapshot());
     }
@@ -73,6 +83,12 @@ public final class DynatraceTimer extends AbstractTimer implements TimeAwareDyna
     @Override
     public DynatraceSummarySnapshot takeSummarySnapshotAndReset(TimeUnit unit) {
         return convertIfNecessary(unit, summary.takeSummarySnapshotAndReset());
+    }
+
+    @Override
+    @Deprecated
+    public boolean hasValues() {
+        return summary.getCount() > 0;
     }
 
     @Override

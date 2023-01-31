@@ -29,7 +29,6 @@ import io.micrometer.dynatrace.AbstractDynatraceExporter;
 import io.micrometer.dynatrace.DynatraceConfig;
 import io.micrometer.dynatrace.types.DynatraceSummarySnapshot;
 import io.micrometer.dynatrace.types.DynatraceSummarySnapshotSupport;
-import io.micrometer.dynatrace.types.TimeAwareDynatraceSummarySnapshotSupport;
 
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -199,11 +198,11 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     }
 
     Stream<String> toTimerLine(Timer meter) {
-        if (!(meter instanceof TimeAwareDynatraceSummarySnapshotSupport)) {
+        if (!(meter instanceof DynatraceSummarySnapshotSupport)) {
             return toSummaryLine(meter, meter.takeSnapshot(), getBaseTimeUnit());
         }
 
-        DynatraceSummarySnapshot snapshot = ((TimeAwareDynatraceSummarySnapshotSupport) meter)
+        DynatraceSummarySnapshot snapshot = ((DynatraceSummarySnapshotSupport) meter)
                 .takeSummarySnapshotAndReset(getBaseTimeUnit());
 
         if (snapshot.getCount() == 0) {

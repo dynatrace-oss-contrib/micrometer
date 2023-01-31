@@ -23,6 +23,8 @@ import io.micrometer.core.instrument.distribution.HistogramSnapshot;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.TimeUnit;
+
 /**
  * Resettable {@link DistributionSummary} implementation for Dynatrace exporters.
  *
@@ -86,6 +88,24 @@ public final class DynatraceDistributionSummary extends AbstractDistributionSumm
     @Override
     public DynatraceSummarySnapshot takeSummarySnapshotAndReset() {
         return summary.takeSummarySnapshotAndReset();
+    }
+
+    @Override
+    public DynatraceSummarySnapshot takeSummarySnapshot(TimeUnit timeUnit) {
+        LOGGER.debug("Called takeSummarySnapshot with a TimeUnit on a DistributionSummary. Ignoring TimeUnit.");
+        return takeSummarySnapshot();
+    }
+
+    @Override
+    public DynatraceSummarySnapshot takeSummarySnapshotAndReset(TimeUnit unit) {
+        LOGGER.debug("Called takeSummarySnapshotAndReset with a TimeUnit on a DistributionSummary. Ignoring TimeUnit.");
+        return takeSummarySnapshotAndReset();
+    }
+
+    @Override
+    @Deprecated
+    public boolean hasValues() {
+        return summary.getCount() > 0;
     }
 
     @Override
