@@ -56,8 +56,19 @@ public final class DynatraceTimer extends AbstractTimer implements DynatraceSumm
     }
 
     @Override
+    @Deprecated
+    public boolean hasValues() {
+        return summary.getCount() > 0;
+    }
+
+    @Override
     public DynatraceSummarySnapshot takeSummarySnapshot() {
         return takeSummarySnapshot(baseTimeUnit());
+    }
+
+    @Override
+    public DynatraceSummarySnapshot takeSummarySnapshot(TimeUnit unit) {
+        return convertIfNecessary(unit, summary.takeSummarySnapshot());
     }
 
     @Override
@@ -66,8 +77,8 @@ public final class DynatraceTimer extends AbstractTimer implements DynatraceSumm
     }
 
     @Override
-    public DynatraceSummarySnapshot takeSummarySnapshot(TimeUnit unit) {
-        return convertIfNecessary(unit, summary.takeSummarySnapshot());
+    public DynatraceSummarySnapshot takeSummarySnapshotAndReset(TimeUnit unit) {
+        return convertIfNecessary(unit, summary.takeSummarySnapshotAndReset());
     }
 
     private DynatraceSummarySnapshot convertIfNecessary(TimeUnit unit, DynatraceSummarySnapshot snapshot) {
@@ -78,17 +89,6 @@ public final class DynatraceTimer extends AbstractTimer implements DynatraceSumm
         return new DynatraceSummarySnapshot(unit.convert((long) snapshot.getMin(), baseTimeUnit()),
                 unit.convert((long) snapshot.getMax(), baseTimeUnit()),
                 unit.convert((long) snapshot.getTotal(), baseTimeUnit()), snapshot.getCount());
-    }
-
-    @Override
-    public DynatraceSummarySnapshot takeSummarySnapshotAndReset(TimeUnit unit) {
-        return convertIfNecessary(unit, summary.takeSummarySnapshotAndReset());
-    }
-
-    @Override
-    @Deprecated
-    public boolean hasValues() {
-        return summary.getCount() > 0;
     }
 
     @Override
@@ -119,7 +119,7 @@ public final class DynatraceTimer extends AbstractTimer implements DynatraceSumm
 
     @Override
     public HistogramSnapshot takeSnapshot() {
-        DynatraceSummarySnapshot dtSnapshot = takeSummarySnapshot(baseTimeUnit());
+        DynatraceSummarySnapshot dtSnapshot = takeSummarySnapshot();
         return HistogramSnapshot.empty(dtSnapshot.getCount(), dtSnapshot.getTotal(), dtSnapshot.getMax());
     }
 

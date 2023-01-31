@@ -81,13 +81,14 @@ public final class DynatraceDistributionSummary extends AbstractDistributionSumm
     }
 
     @Override
-    public DynatraceSummarySnapshot takeSummarySnapshot() {
-        return summary.takeSummarySnapshot();
+    @Deprecated
+    public boolean hasValues() {
+        return count() > 0;
     }
 
     @Override
-    public DynatraceSummarySnapshot takeSummarySnapshotAndReset() {
-        return summary.takeSummarySnapshotAndReset();
+    public DynatraceSummarySnapshot takeSummarySnapshot() {
+        return summary.takeSummarySnapshot();
     }
 
     @Override
@@ -97,15 +98,14 @@ public final class DynatraceDistributionSummary extends AbstractDistributionSumm
     }
 
     @Override
-    public DynatraceSummarySnapshot takeSummarySnapshotAndReset(TimeUnit unit) {
-        LOGGER.debug("Called takeSummarySnapshotAndReset with a TimeUnit on a DistributionSummary. Ignoring TimeUnit.");
-        return takeSummarySnapshotAndReset();
+    public DynatraceSummarySnapshot takeSummarySnapshotAndReset() {
+        return summary.takeSummarySnapshotAndReset();
     }
 
     @Override
-    @Deprecated
-    public boolean hasValues() {
-        return summary.getCount() > 0;
+    public DynatraceSummarySnapshot takeSummarySnapshotAndReset(TimeUnit unit) {
+        LOGGER.debug("Called takeSummarySnapshotAndReset with a TimeUnit on a DistributionSummary. Ignoring TimeUnit.");
+        return takeSummarySnapshotAndReset();
     }
 
     @Override
