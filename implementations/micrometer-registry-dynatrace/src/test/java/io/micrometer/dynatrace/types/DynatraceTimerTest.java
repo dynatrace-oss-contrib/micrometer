@@ -136,6 +136,19 @@ class DynatraceTimerTest {
     }
 
     @Test
+    void testConvertIfNecessary() {
+        TimeUnit unit = TimeUnit.MILLISECONDS;
+        DynatraceTimer timer = new DynatraceTimer(ID, CLOCK, DISTRIBUTION_STATISTIC_CONFIG, PAUSE_DETECTOR, unit);
+
+        DynatraceSummarySnapshot snapshot = new DynatraceSummarySnapshot(1000., 2000., 3000., 2);
+        DynatraceSummarySnapshot unconverted = timer.convertIfNecessary(unit, snapshot);
+        assertThat(unconverted).isEqualTo(snapshot);
+
+        DynatraceSummarySnapshot converted = timer.convertIfNecessary(TimeUnit.SECONDS, snapshot);
+        assertMinMaxSumCount(converted, 1, 2, 3, 2);
+    }
+
+    @Test
     void testSnapshotWithoutTimeUnit_shouldReturnInBaseUnit() {
         DynatraceTimer timerMillis = new DynatraceTimer(ID, CLOCK, DISTRIBUTION_STATISTIC_CONFIG, PAUSE_DETECTOR,
                 TimeUnit.MILLISECONDS);

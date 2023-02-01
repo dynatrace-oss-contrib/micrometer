@@ -81,7 +81,7 @@ public final class DynatraceTimer extends AbstractTimer implements DynatraceSumm
         return convertIfNecessary(unit, summary.takeSummarySnapshotAndReset());
     }
 
-    private DynatraceSummarySnapshot convertIfNecessary(TimeUnit unit, DynatraceSummarySnapshot snapshot) {
+    DynatraceSummarySnapshot convertIfNecessary(TimeUnit unit, DynatraceSummarySnapshot snapshot) {
         if (unit == baseTimeUnit()) {
             return snapshot;
         }
