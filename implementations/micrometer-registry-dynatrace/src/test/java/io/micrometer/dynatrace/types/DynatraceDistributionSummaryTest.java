@@ -23,6 +23,8 @@ import io.micrometer.core.instrument.distribution.DistributionStatisticConfig;
 import org.assertj.core.data.Offset;
 import org.junit.jupiter.api.Test;
 
+import java.util.concurrent.TimeUnit;
+
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 /**
@@ -84,6 +86,19 @@ class DynatraceDistributionSummaryTest {
         ds.record(-6.789);
 
         assertMinMaxSumCount(ds, 3.14, 4.76, 7.9, 2);
+    }
+
+    @Test
+    void testUnitsAreIgnored() {
+        DynatraceDistributionSummary ds = new DynatraceDistributionSummary(ID, CLOCK, DISTRIBUTION_STATISTIC_CONFIG, 1);
+
+        ds.record(100);
+        DynatraceSummarySnapshot microsecondsSnapshot = ds.takeSummarySnapshot(TimeUnit.MICROSECONDS);
+        DynatraceSummarySnapshot daysSnapshot = ds.takeSummarySnapshot(TimeUnit.DAYS);
+
+        // both the microseconds and the days snapshot return the same values.
+        assertMinMaxSumCount(microsecondsSnapshot, daysSnapshot.getMin(), daysSnapshot.getMax(),
+                daysSnapshot.getTotal(), daysSnapshot.getCount());
     }
 
     @Test

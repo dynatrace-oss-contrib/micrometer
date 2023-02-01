@@ -136,6 +136,25 @@ class DynatraceTimerTest {
     }
 
     @Test
+    void testSnapshotWithoutTimeUnit_shouldReturnInBaseUnit() {
+        DynatraceTimer timerMillis = new DynatraceTimer(ID, CLOCK, DISTRIBUTION_STATISTIC_CONFIG, PAUSE_DETECTOR,
+                TimeUnit.MILLISECONDS);
+        DynatraceTimer timerDays = new DynatraceTimer(ID, CLOCK, DISTRIBUTION_STATISTIC_CONFIG, PAUSE_DETECTOR,
+                TimeUnit.DAYS);
+
+        timerMillis.record(Duration.ofMillis(314));
+        // add 3000 millis as seconds
+        timerMillis.record(Duration.ofSeconds(3));
+
+        timerDays.record(Duration.ofDays(10));
+        // add 1 day as hours
+        timerDays.record(Duration.ofHours(24));
+
+        assertMinMaxSumCount(timerMillis.takeSummarySnapshot(), 314, 3000, 3314, 2);
+        assertMinMaxSumCount(timerDays.takeSummarySnapshot(), 1, 10, 11, 2);
+    }
+
+    @Test
     void testUseAllRecordInterfaces() {
         MockClock clock = new MockClock();
         DynatraceTimer timer = new DynatraceTimer(ID, clock, DISTRIBUTION_STATISTIC_CONFIG, PAUSE_DETECTOR,
