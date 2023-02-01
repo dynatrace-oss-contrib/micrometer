@@ -102,6 +102,16 @@ class DynatraceDistributionSummaryTest {
     }
 
     @Test
+    void testUnitsAreIgnoredButResetWorks() {
+        DynatraceDistributionSummary ds = new DynatraceDistributionSummary(ID, CLOCK, DISTRIBUTION_STATISTIC_CONFIG, 1);
+
+        ds.record(100);
+        DynatraceSummarySnapshot microsecondsSnapshot = ds.takeSummarySnapshotAndReset(TimeUnit.MICROSECONDS);
+        assertMinMaxSumCount(microsecondsSnapshot, 100, 100, 100, 1);
+        assertMinMaxSumCount(ds.takeSummarySnapshot(TimeUnit.DAYS), 0, 0, 0, 0);
+    }
+
+    @Test
     void testMinMaxAreOverwritten() {
         DynatraceDistributionSummary ds = new DynatraceDistributionSummary(ID, CLOCK, DISTRIBUTION_STATISTIC_CONFIG, 1);
         ds.record(3.14);

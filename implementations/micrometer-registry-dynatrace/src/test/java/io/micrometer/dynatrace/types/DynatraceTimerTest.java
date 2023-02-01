@@ -149,6 +149,16 @@ class DynatraceTimerTest {
     }
 
     @Test
+    void testSnapshotWithoutTimeUnitAndReset() {
+        DynatraceTimer timer = new DynatraceTimer(ID, CLOCK, DISTRIBUTION_STATISTIC_CONFIG, PAUSE_DETECTOR,
+                TimeUnit.MILLISECONDS);
+        timer.record(Duration.ofSeconds(1));
+
+        assertMinMaxSumCount(timer.takeSummarySnapshotAndReset(), 1000, 1000, 1000, 1);
+        assertMinMaxSumCount(timer.takeSummarySnapshot(), 0, 0, 0, 0);
+    }
+
+    @Test
     void testSnapshotWithoutTimeUnit_shouldReturnInBaseUnit() {
         DynatraceTimer timerMillis = new DynatraceTimer(ID, CLOCK, DISTRIBUTION_STATISTIC_CONFIG, PAUSE_DETECTOR,
                 TimeUnit.MILLISECONDS);
