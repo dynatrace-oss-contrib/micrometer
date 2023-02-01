@@ -80,6 +80,9 @@ public final class DynatraceDistributionSummary extends AbstractDistributionSumm
         return summary.getMin();
     }
 
+    /**
+     * @deprecated see {@link DynatraceSummarySnapshotSupport#hasValues()}.
+     */
     @Override
     @Deprecated
     public boolean hasValues() {
