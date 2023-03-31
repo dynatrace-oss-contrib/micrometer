@@ -15,10 +15,6 @@
  */
 package io.micrometer.dynatrace.types;
 
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.DoubleAdder;
-import java.util.concurrent.atomic.LongAdder;
-
 /**
  * Internal class for resettable summary statistics.
  *
@@ -26,45 +22,49 @@ import java.util.concurrent.atomic.LongAdder;
  */
 final class DynatraceSummary {
 
-    private final LongAdder count = new LongAdder();
+    private long count;
 
-    private final DoubleAdder total = new DoubleAdder();
+    private double total;
 
-    private final AtomicLong min = new AtomicLong();
+    private double min;
 
-    private final AtomicLong max = new AtomicLong();
+    private double max;
 
     void recordNonNegative(double amount) {
         if (amount < 0) {
             return;
         }
 
-        long longBits = Double.doubleToLongBits(amount);
         synchronized (this) {
-            max.getAndUpdate(prev -> Math.max(prev, longBits));
-            // have to check if a value was already recorded before, otherwise min will
-            // always stay 0 (because the default is 0).
-            min.getAndUpdate(prev -> count.longValue() > 0 ? Math.min(prev, longBits) : longBits);
-
-            total.add(amount);
-            count.increment();
+            max = Math.max(max, amount);
+            min = count > 0 ? Math.min(min, amount) : amount;
+            total += amount;
+            count++;
         }
     }
 
     long getCount() {
-        return count.longValue();
+        synchronized (this) {
+            return count;
+        }
     }
 
     double getTotal() {
-        return total.doubleValue();
+        synchronized (this) {
+            return total;
+        }
     }
 
     double getMin() {
-        return Double.longBitsToDouble(min.longValue());
+        synchronized (this) {
+            return min;
+        }
     }
 
     double getMax() {
-        return Double.longBitsToDouble(max.longValue());
+        synchronized (this) {
+            return max;
+        }
     }
 
     DynatraceSummarySnapshot takeSummarySnapshot() {
@@ -83,10 +83,10 @@ final class DynatraceSummary {
 
     void reset() {
         synchronized (this) {
-            min.set(0);
-            max.set(0);
-            total.reset();
-            count.reset();
+            min = 0.;
+            max = 0.;
+            total = 0.;
+            count = 0;
         }
     }
 
