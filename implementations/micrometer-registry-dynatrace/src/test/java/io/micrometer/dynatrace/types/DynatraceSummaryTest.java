@@ -107,19 +107,20 @@ class DynatraceSummaryTest {
         });
 
         executorService.shutdown();
-        boolean terminated =
-            executorService.awaitTermination(1000, TimeUnit.MILLISECONDS);
+        boolean terminated = executorService.awaitTermination(1000, TimeUnit.MILLISECONDS);
         assertThat(terminated).isTrue();
 
-        double expTotal = (valueRecordedNTimes * expMin) + (valueRecordedNTimes * expAvg) + (valueRecordedNTimes * expMax);
+        double expTotal = (valueRecordedNTimes * expMin) + (valueRecordedNTimes * expAvg)
+                + (valueRecordedNTimes * expMax);
         assertMinMaxSumCount(summary, expMin, expMax, expTotal, 300);
     }
 
     private void assertMinMaxSumCount(DynatraceSummary summary, Double expMin, Double expMax, Double expTotal,
-                                      long expCount) {
+            long expCount) {
         assertThat(summary.getMin()).isCloseTo(expMin, OFFSET);
         assertThat(summary.getMax()).isCloseTo(expMax, OFFSET);
         assertThat(summary.getCount()).isEqualTo(expCount);
         assertThat(summary.getTotal()).isCloseTo(expTotal, OFFSET);
     }
+
 }
