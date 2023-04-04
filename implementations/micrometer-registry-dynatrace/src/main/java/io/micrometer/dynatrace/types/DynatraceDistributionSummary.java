@@ -97,6 +97,14 @@ public final class DynatraceDistributionSummary extends AbstractDistributionSumm
         return summary.getMax();
     }
 
+    /**
+     * @deprecated since 1.9.10.
+     * Using this method is not synchronized and might give inconsistent results when
+     * multiple getters are called sequentially. It is recommended to
+     * {@link DynatraceDistributionSummary#takeSummarySnapshot() take a snapshot} and use
+     * the getters on the {@link DynatraceSummarySnapshot} instead.
+     */
+    @Deprecated
     public double min() {
         return summary.getMin();
     }

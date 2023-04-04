@@ -126,11 +126,25 @@ public final class DynatraceTimer extends AbstractTimer implements DynatraceSumm
         return unit.convert((long) summary.getTotal(), baseTimeUnit());
     }
 
+    /**
+     * Using this method is not synchronized and might give inconsistent results when
+     * multiple getters are called sequentially. It is recommended to
+     * {@link DynatraceDistributionSummary#takeSummarySnapshot(TimeUnit) take a snapshot}
+     * and use the getters on the {@link DynatraceSummarySnapshot} instead.
+     */
     @Override
     public double max(TimeUnit unit) {
         return unit.convert((long) summary.getMax(), baseTimeUnit());
     }
 
+    /**
+     * @deprecated since 1.9.10.
+     * Using this method is not synchronized and might give inconsistent results when
+     * multiple getters are called sequentially. It is recommended to
+     * {@link DynatraceDistributionSummary#takeSummarySnapshot(TimeUnit) take a snapshot}
+     * and use the getters on the {@link DynatraceSummarySnapshot} instead.
+     */
+    @Deprecated
     public double min(TimeUnit unit) {
         return unit.convert((long) summary.getMin(), baseTimeUnit());
     }
