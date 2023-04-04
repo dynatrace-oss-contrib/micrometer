@@ -63,7 +63,7 @@ final class DynatraceSummary {
 
     DynatraceSummarySnapshot takeSummarySnapshot() {
         synchronized (this) {
-            return new DynatraceSummarySnapshot(getMin(), getMax(), getTotal(), getCount());
+            return new DynatraceSummarySnapshot(min, max, total, count);
         }
     }
 
