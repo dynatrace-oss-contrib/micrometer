@@ -37,6 +37,8 @@ final class DynatraceSummary {
 
         synchronized (this) {
             max = Math.max(max, amount);
+            // check if count is equal to 0 and set initial min value if it is, otherwise
+            // min will always stay at 0.
             min = count > 0 ? Math.min(min, amount) : amount;
             total += amount;
             count++;
