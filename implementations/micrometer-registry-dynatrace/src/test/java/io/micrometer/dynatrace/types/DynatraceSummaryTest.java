@@ -99,7 +99,7 @@ class DynatraceSummaryTest {
             }
         });
 
-        // second executor records the max 100 times
+        // third executor records the max 100 times
         executorService.submit(() -> {
             for (int i = 0; i < valueRecordedNTimes; i++) {
                 summary.recordNonNegative(expMax);
