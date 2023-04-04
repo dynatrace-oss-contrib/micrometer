@@ -44,27 +44,19 @@ final class DynatraceSummary {
     }
 
     long getCount() {
-        synchronized (this) {
-            return count;
-        }
+        return count;
     }
 
     double getTotal() {
-        synchronized (this) {
-            return total;
-        }
+        return total;
     }
 
     double getMin() {
-        synchronized (this) {
-            return min;
-        }
+        return min;
     }
 
     double getMax() {
-        synchronized (this) {
-            return max;
-        }
+        return max;
     }
 
     DynatraceSummarySnapshot takeSummarySnapshot() {
