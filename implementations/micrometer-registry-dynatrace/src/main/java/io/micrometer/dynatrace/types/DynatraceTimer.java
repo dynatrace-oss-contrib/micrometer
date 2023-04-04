@@ -104,11 +104,23 @@ public final class DynatraceTimer extends AbstractTimer implements DynatraceSumm
         summary.recordNonNegative(inBaseUnit);
     }
 
+    /**
+     * Using this method is not synchronized and might give inconsistent results when
+     * multiple getters are called sequentially. It is recommended to
+     * {@link DynatraceDistributionSummary#takeSummarySnapshot(TimeUnit) take a snapshot}
+     * and use the getters on the {@link DynatraceSummarySnapshot} instead.
+     */
     @Override
     public long count() {
         return summary.getCount();
     }
 
+    /**
+     * Using this method is not synchronized and might give inconsistent results when
+     * multiple getters are called sequentially. It is recommended to
+     * {@link DynatraceDistributionSummary#takeSummarySnapshot(TimeUnit) take a snapshot}
+     * and use the getters on the {@link DynatraceSummarySnapshot} instead.
+     */
     @Override
     public double totalTime(TimeUnit unit) {
         return unit.convert((long) summary.getTotal(), baseTimeUnit());

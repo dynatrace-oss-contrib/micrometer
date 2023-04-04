@@ -45,18 +45,34 @@ final class DynatraceSummary {
         }
     }
 
+    /**
+     * Getters are not synchronized and might give inconsistent results. It is recommended
+     * to take a snapshot and use the {@link DynatraceSummarySnapshot} instead.
+     */
     long getCount() {
         return count;
     }
 
+    /**
+     * Getters are not synchronized and might give inconsistent results. It is recommended
+     * to take a snapshot and use the {@link DynatraceSummarySnapshot} instead.
+     */
     double getTotal() {
         return total;
     }
 
+    /**
+     * Getters are not synchronized and might give inconsistent results. It is recommended
+     * to take a snapshot and use the {@link DynatraceSummarySnapshot} instead.
+     */
     double getMin() {
         return min;
     }
 
+    /**
+     * Getters are not synchronized and might give inconsistent results. It is recommended
+     * to take a snapshot and use the {@link DynatraceSummarySnapshot} instead.
+     */
     double getMax() {
         return max;
     }
