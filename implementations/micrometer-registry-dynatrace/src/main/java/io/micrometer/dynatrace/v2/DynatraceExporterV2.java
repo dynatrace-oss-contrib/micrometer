@@ -141,6 +141,12 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
             // that contain NaN or Inf values are not returned from "toMetricLines",
             // and are therefore dropped.
             Stream<String> metricLines = toMetricLines(meter);
+            /**
+             * my.metric 3
+             * #my.metric unit:1
+             * my.other 4
+             * #my.metric unit:1
+             */
 
             metricLines.forEach(line -> {
                 batch.add(line);
@@ -166,7 +172,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         return toMeterLine(meter, this::createGaugeLine);
     }
 
-    private String createGaugeLine(Meter meter, Measurement measurement) {
+    private Stream<String> createGaugeLine(Meter meter, Measurement measurement) {
         try {
             double value = measurement.getValue();
             if (Double.isNaN(value)) {
@@ -184,30 +190,33 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
                 nanGaugeWarnThenDebugLogger.log(() -> String.format(
                         "Meter '%s' returned a value of NaN, which will not be exported. This can be a deliberate value or because the weak reference to the backing object expired.",
                         meter.getId().getName()));
-                return null;
+                return Stream.empty();
             }
-            return createMetricBuilder(meter).setDoubleGaugeValue(value).serialize();
+            Metric.Builder metricBuilder = createMetricBuilder(meter).setDoubleGaugeValue(value);
+
+            return Stream.of(metricBuilder.serializeMetricLine(), metricBuilder.serializeMetadataLine());
         }
         catch (MetricException e) {
             logger.warn(METER_EXCEPTION_LOG_FORMAT, meter.getId(), e.getMessage());
         }
 
-        return null;
+        return Stream.empty();
     }
 
     Stream<String> toCounterLine(Counter meter) {
         return toMeterLine(meter, this::createCounterLine);
     }
 
-    private String createCounterLine(Meter meter, Measurement measurement) {
+    private Stream<String> createCounterLine(Meter meter, Measurement measurement) {
         try {
-            return createMetricBuilder(meter).setDoubleCounterValueDelta(measurement.getValue()).serialize();
+            Metric.Builder metricBuilder = createMetricBuilder(meter).setDoubleCounterValueDelta(measurement.getValue());
+            return Stream.of(metricBuilder.serializeMetricLine(), metricBuilder.serializeMetadataLine());
         }
         catch (MetricException e) {
             logger.warn(METER_EXCEPTION_LOG_FORMAT, meter.getId(), e.getMessage());
         }
 
-        return null;
+        return Stream.empty();
     }
 
     Stream<String> toTimerLine(Timer meter) {
@@ -301,15 +310,17 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         return toMeterLine(meter, this::createGaugeLine);
     }
 
-    private Stream<String> toMeterLine(Meter meter, BiFunction<Meter, Measurement, String> measurementConverter) {
-        return streamOf(meter.measure()).map(measurement -> measurementConverter.apply(meter, measurement))
+    private Stream<String> toMeterLine(Meter meter, BiFunction<Meter, Measurement, Stream<String>> measurementConverter) {
+        return streamOf(meter.measure()).flatMap(measurement -> measurementConverter.apply(meter, measurement))
             .filter(Objects::nonNull);
     }
 
     private Metric.Builder createMetricBuilder(Meter meter) {
         return metricBuilderFactory.newMetricBuilder(meter.getId().getName())
             .setDimensions(fromTags(meter.getId().getTags()))
-            .setTimestamp(Instant.ofEpochMilli(clock.wallTime()));
+            .setTimestamp(Instant.ofEpochMilli(clock.wallTime()))
+            .setUnit(meter.getId().getBaseUnit())
+            .setDescription(meter.getId().getDescription());
     }
 
     private DimensionList fromTags(List<Tag> tags) {
