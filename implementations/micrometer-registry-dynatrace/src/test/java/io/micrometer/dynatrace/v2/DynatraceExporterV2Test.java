@@ -493,15 +493,20 @@ class DynatraceExporterV2Test {
 
         exporter.export(Arrays.asList(counter, gauge, timer));
 
-        verify(httpClient).send(assertArg(request -> {
+        verify(httpClient).send(
+            assertArg(request -> {
             assertThat(request.getRequestHeaders()).containsOnly(entry("Content-Type", "text/plain"),
                     entry("User-Agent", "micrometer"), entry("Authorization", "Api-Token apiToken"));
-            assertThat(request.getEntity()).asString()
-                .hasLineCount(3)
-                .contains("my.counter,dt.metrics.source=micrometer count,delta=12.0 " + clock.wallTime())
-                .contains("my.gauge,dt.metrics.source=micrometer gauge,42.0 " + clock.wallTime())
-                .contains("my.timer,dt.metrics.source=micrometer gauge,min=22.0,max=22.0,sum=22.0,count=1 "
-                        + clock.wallTime());
+            assertThat(request.getEntity())
+                .asString()
+                .hasLineCount(4)
+                .containsSubsequence(
+                    "my.counter,dt.metrics.source=micrometer count,delta=12.0 " + clock.wallTime(),
+                    "my.gauge,dt.metrics.source=micrometer gauge,42.0 " + clock.wallTime(),
+                    "my.timer,dt.metrics.source=micrometer gauge,min=22.0,max=22.0,sum=22.0,count=1 "
+                        + clock.wallTime(),
+                    "#my.timer gauge dt.meta.unit=milliseconds"
+                );
         }));
     }
 
@@ -713,14 +718,9 @@ class DynatraceExporterV2Test {
             .containsExactly(
                 "#my.gauge gauge dt.meta.description=my.description,dt.meta.unit=Liters"
             );
-
-
-
-
     }
 
     // todo tests:
-    // * test with lines limit is reached
     // * test the behaviour when the same metadata is set twice
     // * when different metadata is set
 
