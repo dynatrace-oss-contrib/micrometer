@@ -62,6 +62,7 @@ class DynatraceExporterV2Test {
     private static final MockLoggerFactory FACTORY = new MockLoggerFactory();
 
     private static final MockLogger LOGGER = FACTORY.getLogger(DynatraceExporterV2.class);
+
     private static final Map<String, String> SEEN_METADATA = new HashMap<>();
 
     private DynatraceConfig config;
@@ -197,7 +198,8 @@ class DynatraceExporterV2Test {
         obj.set(2.3d);
         clock.add(config.step());
 
-        List<String> lines = exporter.toFunctionCounterLine(functionCounter, SEEN_METADATA).collect(Collectors.toList());
+        List<String> lines = exporter.toFunctionCounterLine(functionCounter, SEEN_METADATA)
+            .collect(Collectors.toList());
         assertThat(lines).hasSize(1);
         assertThat(lines.get(0))
             .isEqualTo("my.functionCounter,dt.metrics.source=micrometer count,delta=2.3 " + clock.wallTime());
@@ -370,7 +372,8 @@ class DynatraceExporterV2Test {
         summary.record(3.1);
         clock.add(config.step());
 
-        List<String> nonEmptyLines = exporter.toDistributionSummaryLine(summary, SEEN_METADATA).collect(Collectors.toList());
+        List<String> nonEmptyLines = exporter.toDistributionSummaryLine(summary, SEEN_METADATA)
+            .collect(Collectors.toList());
         assertThat(nonEmptyLines).hasSize(1);
         assertThat(nonEmptyLines.get(0)).isEqualTo(
                 "my.summary,dt.metrics.source=micrometer gauge,min=3.1,max=3.1,sum=3.1,count=1 " + clock.wallTime());
