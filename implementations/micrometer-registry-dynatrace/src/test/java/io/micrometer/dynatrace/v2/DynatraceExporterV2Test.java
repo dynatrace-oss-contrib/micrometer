@@ -62,6 +62,7 @@ class DynatraceExporterV2Test {
     private static final MockLoggerFactory FACTORY = new MockLoggerFactory();
 
     private static final MockLogger LOGGER = FACTORY.getLogger(DynatraceExporterV2.class);
+    private static final Map<String, String> SEEN_METADATA = new HashMap<>();
 
     private DynatraceConfig config;
 
@@ -86,6 +87,8 @@ class DynatraceExporterV2Test {
         this.exporter = FACTORY.injectLogger(() -> createExporter(httpClient));
 
         this.meterRegistry = DynatraceMeterRegistry.builder(config).clock(clock).httpClient(httpClient).build();
+
+        SEEN_METADATA.clear();
     }
 
     @AfterEach
@@ -97,7 +100,7 @@ class DynatraceExporterV2Test {
     void toGaugeLine() {
         meterRegistry.gauge("my.gauge", 1.23);
         Gauge gauge = meterRegistry.find("my.gauge").gauge();
-        List<String> lines = exporter.toGaugeLine(gauge).collect(Collectors.toList());
+        List<String> lines = exporter.toGaugeLine(gauge, SEEN_METADATA).collect(Collectors.toList());
         assertThat(lines).hasSize(1);
         assertThat(lines.get(0)).isEqualTo("my.gauge,dt.metrics.source=micrometer gauge,1.23 " + clock.wallTime());
     }
@@ -106,18 +109,18 @@ class DynatraceExporterV2Test {
     void toGaugeLineShouldDropNanValue() {
         meterRegistry.gauge("my.gauge", NaN);
         Gauge gauge = meterRegistry.find("my.gauge").gauge();
-        assertThat(exporter.toGaugeLine(gauge)).isEmpty();
+        assertThat(exporter.toGaugeLine(gauge, SEEN_METADATA)).isEmpty();
     }
 
     @Test
     void toGaugeLineShouldDropInfiniteValues() {
         meterRegistry.gauge("my.gauge", POSITIVE_INFINITY);
         Gauge gauge = meterRegistry.find("my.gauge").gauge();
-        assertThat(exporter.toGaugeLine(gauge)).isEmpty();
+        assertThat(exporter.toGaugeLine(gauge, SEEN_METADATA)).isEmpty();
 
         meterRegistry.gauge("my.gauge", NEGATIVE_INFINITY);
         gauge = meterRegistry.find("my.gauge").gauge();
-        assertThat(exporter.toGaugeLine(gauge)).isEmpty();
+        assertThat(exporter.toGaugeLine(gauge, SEEN_METADATA)).isEmpty();
     }
 
     @Test
@@ -125,7 +128,7 @@ class DynatraceExporterV2Test {
         AtomicReference<Double> obj = new AtomicReference<>(2.3d);
         meterRegistry.more().timeGauge("my.timeGauge", Tags.empty(), obj, MILLISECONDS, AtomicReference::get);
         TimeGauge timeGauge = meterRegistry.find("my.timeGauge").timeGauge();
-        List<String> lines = exporter.toTimeGaugeLine(timeGauge).collect(Collectors.toList());
+        List<String> lines = exporter.toTimeGaugeLine(timeGauge, SEEN_METADATA).collect(Collectors.toList());
         assertThat(lines).hasSize(1);
         assertThat(lines.get(0)).isEqualTo("my.timeGauge,dt.metrics.source=micrometer gauge,2.3 " + clock.wallTime());
     }
@@ -136,7 +139,7 @@ class DynatraceExporterV2Test {
         meterRegistry.more().timeGauge("my.timeGauge", Tags.empty(), obj, MILLISECONDS, AtomicReference::get);
         TimeGauge timeGauge = meterRegistry.find("my.timeGauge").timeGauge();
 
-        assertThat(exporter.toTimeGaugeLine(timeGauge)).isEmpty();
+        assertThat(exporter.toTimeGaugeLine(timeGauge, SEEN_METADATA)).isEmpty();
     }
 
     @Test
@@ -144,12 +147,12 @@ class DynatraceExporterV2Test {
         AtomicReference<Double> obj = new AtomicReference<>(POSITIVE_INFINITY);
         meterRegistry.more().timeGauge("my.timeGauge", Tags.empty(), obj, MILLISECONDS, AtomicReference::get);
         TimeGauge timeGauge = meterRegistry.find("my.timeGauge").timeGauge();
-        assertThat(exporter.toTimeGaugeLine(timeGauge)).isEmpty();
+        assertThat(exporter.toTimeGaugeLine(timeGauge, SEEN_METADATA)).isEmpty();
 
         obj = new AtomicReference<>(NEGATIVE_INFINITY);
         meterRegistry.more().timeGauge("my.timeGauge", Tags.empty(), obj, MILLISECONDS, AtomicReference::get);
         timeGauge = meterRegistry.find("my.timeGauge").timeGauge();
-        assertThat(exporter.toTimeGaugeLine(timeGauge)).isEmpty();
+        assertThat(exporter.toTimeGaugeLine(timeGauge, SEEN_METADATA)).isEmpty();
     }
 
     @Test
@@ -160,7 +163,7 @@ class DynatraceExporterV2Test {
         counter.increment();
         clock.add(config.step());
 
-        List<String> lines = exporter.toCounterLine(counter).collect(Collectors.toList());
+        List<String> lines = exporter.toCounterLine(counter, SEEN_METADATA).collect(Collectors.toList());
         assertThat(lines).hasSize(1);
         assertThat(lines.get(0))
             .isEqualTo("my.counter,dt.metrics.source=micrometer count,delta=3.0 " + clock.wallTime());
@@ -172,7 +175,7 @@ class DynatraceExporterV2Test {
         counter.increment(NaN);
         clock.add(config.step());
 
-        assertThat(exporter.toCounterLine(counter)).isEmpty();
+        assertThat(exporter.toCounterLine(counter, SEEN_METADATA)).isEmpty();
     }
 
     @Test
@@ -181,7 +184,7 @@ class DynatraceExporterV2Test {
         counter.increment(POSITIVE_INFINITY);
         clock.add(config.step());
 
-        assertThat(exporter.toCounterLine(counter)).isEmpty();
+        assertThat(exporter.toCounterLine(counter, SEEN_METADATA)).isEmpty();
     }
 
     @Test
@@ -194,7 +197,7 @@ class DynatraceExporterV2Test {
         obj.set(2.3d);
         clock.add(config.step());
 
-        List<String> lines = exporter.toFunctionCounterLine(functionCounter).collect(Collectors.toList());
+        List<String> lines = exporter.toFunctionCounterLine(functionCounter, SEEN_METADATA).collect(Collectors.toList());
         assertThat(lines).hasSize(1);
         assertThat(lines.get(0))
             .isEqualTo("my.functionCounter,dt.metrics.source=micrometer count,delta=2.3 " + clock.wallTime());
@@ -210,7 +213,7 @@ class DynatraceExporterV2Test {
         obj.set(NaN);
         clock.add(config.step());
 
-        assertThat(exporter.toFunctionCounterLine(functionCounter)).isEmpty();
+        assertThat(exporter.toFunctionCounterLine(functionCounter, SEEN_METADATA)).isEmpty();
     }
 
     @Test
@@ -223,7 +226,7 @@ class DynatraceExporterV2Test {
         obj.set(POSITIVE_INFINITY);
         clock.add(config.step());
 
-        assertThat(exporter.toFunctionCounterLine(functionCounter)).isEmpty();
+        assertThat(exporter.toFunctionCounterLine(functionCounter, SEEN_METADATA)).isEmpty();
     }
 
     @Test
@@ -234,7 +237,7 @@ class DynatraceExporterV2Test {
         timer.record(Duration.ofMillis(10));
         clock.add(config.step());
 
-        List<String> lines = exporter.toTimerLine(timer).collect(Collectors.toList());
+        List<String> lines = exporter.toTimerLine(timer, SEEN_METADATA).collect(Collectors.toList());
         assertThat(lines).hasSize(1);
         assertThat(lines.get(0)).isEqualTo(
                 "my.timer,dt.metrics.source=micrometer gauge,min=10.0,max=60.0,sum=90.0,count=3 " + clock.wallTime());
@@ -246,7 +249,7 @@ class DynatraceExporterV2Test {
         timer.record(Duration.ofMillis(60));
         clock.add(config.step());
 
-        List<String> lines = exporter.toTimerLine(timer).collect(Collectors.toList());
+        List<String> lines = exporter.toTimerLine(timer, SEEN_METADATA).collect(Collectors.toList());
         assertThat(lines).hasSize(1);
         assertThat(lines.get(0)).isEqualTo(
                 "my.timer,dt.metrics.source=micrometer gauge,min=60.0,max=60.0,sum=60.0,count=1 " + clock.wallTime());
@@ -254,7 +257,7 @@ class DynatraceExporterV2Test {
         clock.add(config.step());
         // Before the update to drop zero count lines, this would contain 1 line (with
         // count=0), which is not desired.
-        assertThat(exporter.toTimerLine(timer)).isEmpty();
+        assertThat(exporter.toTimerLine(timer, SEEN_METADATA)).isEmpty();
     }
 
     @Test
@@ -290,7 +293,7 @@ class DynatraceExporterV2Test {
             }
         };
 
-        assertThat(exporter.toFunctionTimerLine(functionTimer)).isEmpty();
+        assertThat(exporter.toFunctionTimerLine(functionTimer, SEEN_METADATA)).isEmpty();
     }
 
     @Test
@@ -320,7 +323,7 @@ class DynatraceExporterV2Test {
             }
         };
 
-        List<String> lines = exporter.toFunctionTimerLine(functionTimer).collect(Collectors.toList());
+        List<String> lines = exporter.toFunctionTimerLine(functionTimer, SEEN_METADATA).collect(Collectors.toList());
         assertThat(lines).hasSize(1);
         assertThat(lines.get(0))
             .isEqualTo("my.functionTimer,dt.metrics.source=micrometer gauge,min=10.0,max=10.0,sum=5000.0,count=500 "
@@ -339,7 +342,7 @@ class DynatraceExporterV2Test {
         }
         clock(meterRegistry).add(samples.get(samples.size() - 1), SECONDS);
 
-        List<String> lines = exporter.toLongTaskTimerLine(longTaskTimer).collect(Collectors.toList());
+        List<String> lines = exporter.toLongTaskTimerLine(longTaskTimer, SEEN_METADATA).collect(Collectors.toList());
         assertThat(lines).hasSize(1);
         assertThat(lines.get(0)).isEqualTo(
                 "my.longTaskTimer,dt.metrics.source=micrometer gauge,min=2000.0,max=48000.0,sum=236000.0,count=11 "
@@ -355,7 +358,7 @@ class DynatraceExporterV2Test {
         summary.record(0.1);
         clock.add(config.step());
 
-        List<String> lines = exporter.toDistributionSummaryLine(summary).collect(Collectors.toList());
+        List<String> lines = exporter.toDistributionSummaryLine(summary, SEEN_METADATA).collect(Collectors.toList());
         assertThat(lines).hasSize(1);
         assertThat(lines.get(0)).isEqualTo(
                 "my.summary,dt.metrics.source=micrometer gauge,min=0.1,max=5.4,sum=10.9,count=4 " + clock.wallTime());
@@ -367,7 +370,7 @@ class DynatraceExporterV2Test {
         summary.record(3.1);
         clock.add(config.step());
 
-        List<String> nonEmptyLines = exporter.toDistributionSummaryLine(summary).collect(Collectors.toList());
+        List<String> nonEmptyLines = exporter.toDistributionSummaryLine(summary, SEEN_METADATA).collect(Collectors.toList());
         assertThat(nonEmptyLines).hasSize(1);
         assertThat(nonEmptyLines.get(0)).isEqualTo(
                 "my.summary,dt.metrics.source=micrometer gauge,min=3.1,max=3.1,sum=3.1,count=1 " + clock.wallTime());
@@ -375,7 +378,7 @@ class DynatraceExporterV2Test {
         clock.add(config.step());
         // Before the update to drop zero count lines, this would contain 1 line (with
         // count=0), which is not desired.
-        assertThat(exporter.toDistributionSummaryLine(summary)).isEmpty();
+        assertThat(exporter.toDistributionSummaryLine(summary, SEEN_METADATA)).isEmpty();
     }
 
     @Test
@@ -385,7 +388,7 @@ class DynatraceExporterV2Test {
         Measurement m3 = new Measurement(() -> 5d, Statistic.VALUE);
         Meter meter = Meter.builder("my.custom", Meter.Type.OTHER, Arrays.asList(m1, m2, m3)).register(meterRegistry);
 
-        List<String> lines = exporter.toMeterLine(meter).collect(Collectors.toList());
+        List<String> lines = exporter.toMeterLine(meter, SEEN_METADATA).collect(Collectors.toList());
         assertThat(lines).hasSize(3);
         assertThat(lines.get(0)).isEqualTo("my.custom,dt.metrics.source=micrometer gauge,23.0 " + clock.wallTime());
         assertThat(lines.get(1)).isEqualTo("my.custom,dt.metrics.source=micrometer gauge,42.0 " + clock.wallTime());
@@ -397,7 +400,7 @@ class DynatraceExporterV2Test {
         meterRegistry.gauge("", 1.23);
         Gauge gauge = meterRegistry.find("").gauge();
         assertThat(gauge).isNotNull();
-        assertThat(exporter.toGaugeLine(gauge)).isEmpty();
+        assertThat(exporter.toGaugeLine(gauge, SEEN_METADATA)).isEmpty();
     }
 
     @Test
@@ -406,7 +409,7 @@ class DynatraceExporterV2Test {
         Gauge gauge = meterRegistry.find("my.gauge").gauge();
         assertThat(gauge).isNotNull();
 
-        List<String> lines = exporter.toGaugeLine(gauge).collect(Collectors.toList());
+        List<String> lines = exporter.toGaugeLine(gauge, SEEN_METADATA).collect(Collectors.toList());
         assertThat(lines).hasSize(1);
         assertThat(lines.get(0))
             .isEqualTo("my.gauge,tag1=value1,dt.metrics.source=micrometer,tag2=value2 gauge,1.23 " + clock.wallTime());
@@ -418,7 +421,7 @@ class DynatraceExporterV2Test {
         Gauge gauge = meterRegistry.find("my.gauge").gauge();
         assertThat(gauge).isNotNull();
 
-        List<String> lines = exporter.toGaugeLine(gauge).collect(Collectors.toList());
+        List<String> lines = exporter.toGaugeLine(gauge, SEEN_METADATA).collect(Collectors.toList());
         assertThat(lines).hasSize(1);
         assertThat(lines.get(0))
             .isEqualTo("my.gauge,tag1=value1,dt.metrics.source=micrometer gauge,1.23 " + clock.wallTime());
@@ -429,7 +432,7 @@ class DynatraceExporterV2Test {
         meterRegistry.counter("");
         Counter counter = meterRegistry.find("").counter();
         assertThat(counter).isNotNull();
-        assertThat(exporter.toCounterLine(counter)).isEmpty();
+        assertThat(exporter.toCounterLine(counter, SEEN_METADATA)).isEmpty();
     }
 
     @Test
@@ -438,7 +441,7 @@ class DynatraceExporterV2Test {
         Counter counter = meterRegistry.find("my.counter").counter();
         assertThat(counter).isNotNull();
 
-        List<String> lines = exporter.toCounterLine(counter).collect(Collectors.toList());
+        List<String> lines = exporter.toCounterLine(counter, SEEN_METADATA).collect(Collectors.toList());
         assertThat(lines).hasSize(1);
         assertThat(lines.get(0)).isEqualTo(
                 "my.counter,tag1=value1,dt.metrics.source=micrometer,tag2=value2 count,delta=0.0 " + clock.wallTime());
@@ -450,7 +453,7 @@ class DynatraceExporterV2Test {
         Counter counter = meterRegistry.find("my.counter").counter();
         assertThat(counter).isNotNull();
 
-        List<String> lines = exporter.toCounterLine(counter).collect(Collectors.toList());
+        List<String> lines = exporter.toCounterLine(counter, SEEN_METADATA).collect(Collectors.toList());
         assertThat(lines).hasSize(1);
         assertThat(lines.get(0))
             .isEqualTo("my.counter,tag1=value1,dt.metrics.source=micrometer count,delta=0.0 " + clock.wallTime());
@@ -467,7 +470,7 @@ class DynatraceExporterV2Test {
         Gauge gauge = meterRegistry.find("serialized.as.too.long.line").gauge();
         assertThat(gauge).isNotNull();
 
-        assertThat(exporter.toGaugeLine(gauge)).isEmpty();
+        assertThat(exporter.toGaugeLine(gauge, SEEN_METADATA)).isEmpty();
     }
 
     @Test
