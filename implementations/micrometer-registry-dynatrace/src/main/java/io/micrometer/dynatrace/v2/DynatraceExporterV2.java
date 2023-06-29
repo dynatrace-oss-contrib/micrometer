@@ -16,8 +16,8 @@
 package io.micrometer.dynatrace.v2;
 
 import com.dynatrace.metric.util.*;
-import io.micrometer.core.instrument.*;
 import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.*;
 import io.micrometer.core.instrument.distribution.HistogramSnapshot;
 import io.micrometer.core.instrument.distribution.ValueAtPercentile;
 import io.micrometer.core.instrument.util.StringUtils;
@@ -60,13 +60,13 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     private static final Pattern IS_NULL_ERROR_RESPONSE = Pattern.compile("\"error\":\\s?null");
 
     private static final WarnThenDebugLogger stackTraceWarnThenDebugLogger = new WarnThenDebugLogger(
-            DynatraceExporterV2.class);
+        DynatraceExporterV2.class);
 
     private static final WarnThenDebugLogger nanGaugeWarnThenDebugLogger = new WarnThenDebugLogger(
-            DynatraceExporterV2.class);
+        DynatraceExporterV2.class);
 
     private static final Map<String, String> staticDimensions = Collections.singletonMap("dt.metrics.source",
-            "micrometer");
+        "micrometer");
 
     // This should be non-static for MockLoggerFactory.injectLogger() in tests.
     private final InternalLogger logger = InternalLoggerFactory.getInstance(DynatraceExporterV2.class);
@@ -93,8 +93,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         try {
             // noinspection ResultOfMethodCallIgnored
             URI.create(uri).toURL();
-        }
-        catch (IllegalArgumentException | MalformedURLException ex) {
+        } catch (IllegalArgumentException | MalformedURLException ex) {
             return false;
         }
 
@@ -108,7 +107,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         if (config.uri().equals(DynatraceMetricApiConstants.getDefaultOneAgentEndpoint())) {
             logger
                 .warn("Potential misconfiguration detected: Token is provided, but the endpoint is set to the local OneAgent endpoint, "
-                        + "thus the token will be ignored. If exporting to the cluster API endpoint is intended, its URI has to be provided explicitly.");
+                    + "thus the token will be ignored. If exporting to the cluster API endpoint is intended, its URI has to be provided explicitly.");
             return true;
         }
         return false;
@@ -128,8 +127,9 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
      * API will be dropped and not exported. If the number of serialized data points
      * exceeds the maximum number of allowed data points per request they will be sent in
      * chunks.
+     *
      * @param meters A list of {@link Meter Meters} that are serialized as one or more
-     * metric lines.
+     *               metric lines.
      */
     @Override
     public void export(List<Meter> meters) {
@@ -158,8 +158,8 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
     private Stream<String> toMetricLines(Meter meter) {
         return meter.match(this::toGaugeLine, this::toCounterLine, this::toTimerLine, this::toDistributionSummaryLine,
-                this::toLongTaskTimerLine, this::toTimeGaugeLine, this::toFunctionCounterLine,
-                this::toFunctionTimerLine, this::toMeterLine);
+            this::toLongTaskTimerLine, this::toTimeGaugeLine, this::toFunctionCounterLine,
+            this::toFunctionTimerLine, this::toMeterLine);
     }
 
     Stream<String> toGaugeLine(Gauge meter) {
@@ -182,13 +182,12 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
                 // on the client side here will not change the metrics in Dynatrace.
 
                 nanGaugeWarnThenDebugLogger.log(() -> String.format(
-                        "Meter '%s' returned a value of NaN, which will not be exported. This can be a deliberate value or because the weak reference to the backing object expired.",
-                        meter.getId().getName()));
+                    "Meter '%s' returned a value of NaN, which will not be exported. This can be a deliberate value or because the weak reference to the backing object expired.",
+                    meter.getId().getName()));
                 return null;
             }
             return createMetricBuilder(meter).setDoubleGaugeValue(value).serialize();
-        }
-        catch (MetricException e) {
+        } catch (MetricException e) {
             logger.warn(METER_EXCEPTION_LOG_FORMAT, meter.getId(), e.getMessage());
         }
 
@@ -202,8 +201,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     private String createCounterLine(Meter meter, Measurement measurement) {
         try {
             return createMetricBuilder(meter).setDoubleCounterValueDelta(measurement.getValue()).serialize();
-        }
-        catch (MetricException e) {
+        } catch (MetricException e) {
             logger.warn(METER_EXCEPTION_LOG_FORMAT, meter.getId(), e.getMessage());
         }
 
@@ -251,8 +249,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         try {
             String line = createMetricBuilder(meter).setDoubleSummaryValue(min, max, total, count).serialize();
             return Stream.of(line);
-        }
-        catch (MetricException e) {
+        } catch (MetricException e) {
             logger.warn(METER_EXCEPTION_LOG_FORMAT, meter.getId(), e.getMessage());
         }
 
@@ -277,7 +274,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         HistogramSnapshot snapshot = meter.takeSnapshot();
 
         long count = snapshot.count();
-            if (count == 0) {
+        if (count == 0) {
             return Stream.empty();
         } else if (count == 1) {
             // in cases where the snapshot has only one value, often the min/max and sum are not the same
@@ -301,15 +298,26 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     }
 
     Stream<String> toFunctionTimerLine(FunctionTimer meter) {
-        long count = (long) meter.count();
-        if (count < 1) {
+        double count = 0;
+        double total = 0;
+
+        // This should ensure that no function timer values can be added while values are read, leading to an
+        // invalid intermediate state.
+        synchronized (meter) {
+            count = meter.count();
+            total = meter.totalTime(getBaseTimeUnit());
+        }
+
+        long countLong = (long) count;
+
+        if (countLong < 1) {
             logger.debug("Timer with 0 count dropped: {}", meter.getId().getName());
             return Stream.empty();
         }
-        double total = meter.totalTime(getBaseTimeUnit());
-        double average = meter.mean(getBaseTimeUnit());
 
-        return createSummaryLine(meter, average, average, total, count);
+        double average = total / count;
+
+        return createSummaryLine(meter, average, average, total, countLong);
     }
 
     Stream<String> toMeterLine(Meter meter) {
@@ -329,7 +337,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
     private DimensionList fromTags(List<Tag> tags) {
         return DimensionList.fromCollection(
-                tags.stream().map(tag -> Dimension.create(tag.getKey(), tag.getValue())).collect(Collectors.toList()));
+            tags.stream().map(tag -> Dimension.create(tag.getKey(), tag.getValue())).collect(Collectors.toList()));
     }
 
     private <T> Stream<T> streamOf(Iterable<T> iterable) {
@@ -359,12 +367,11 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
                 .send()
                 .onSuccess(response -> handleSuccess(lineCount, response))
                 .onError(response -> logger.error("Failed metric ingestion: Error Code={}, Response Body={}",
-                        response.code(), getTruncatedBody(response)));
-        }
-        catch (Throwable throwable) {
+                    response.code(), getTruncatedBody(response)));
+        } catch (Throwable throwable) {
             logger.warn("Failed metric ingestion: " + throwable);
             stackTraceWarnThenDebugLogger.log("Stack trace for previous 'Failed metric ingestion' warning log: ",
-                    throwable);
+                throwable);
         }
     }
 
@@ -379,21 +386,18 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
                 Matcher linesInvalidMatchResult = EXTRACT_LINES_INVALID.matcher(response.body());
                 if (linesOkMatchResult.find() && linesInvalidMatchResult.find()) {
                     logger.debug("Sent {} metric lines, linesOk: {}, linesInvalid: {}.", totalSent,
-                            linesOkMatchResult.group(1), linesInvalidMatchResult.group(1));
-                }
-                else {
+                        linesOkMatchResult.group(1), linesInvalidMatchResult.group(1));
+                } else {
                     logger.warn("Unable to parse response: {}", getTruncatedBody(response));
                 }
-            }
-            else {
+            } else {
                 logger.warn("Unable to parse response: {}", getTruncatedBody(response));
             }
-        }
-        else {
+        } else {
             // common pitfall if URI is supplied in V1 format (without endpoint path)
             logger.error(
-                    "Expected status code 202, got {}.\nResponse Body={}\nDid you specify the ingest path (e.g.: /api/v2/metrics/ingest)?",
-                    response.code(), getTruncatedBody(response));
+                "Expected status code 202, got {}.\nResponse Body={}\nDid you specify the ingest path (e.g.: /api/v2/metrics/ingest)?",
+                response.code(), getTruncatedBody(response));
         }
     }
 

@@ -262,7 +262,7 @@ class DynatraceExporterV2Test {
     }
 
     @Test
-    void toFunctionTimerLineShouldDropNanMean() {
+    void toFunctionTimerLineShouldDropNanTotal() {
         FunctionTimer functionTimer = new FunctionTimer() {
             @Override
             public double count() {
@@ -272,7 +272,7 @@ class DynatraceExporterV2Test {
             @Override
             @SuppressWarnings("NullableProblems")
             public double totalTime(TimeUnit unit) {
-                return 5000;
+                return NaN;
             }
 
             @Override
@@ -287,11 +287,6 @@ class DynatraceExporterV2Test {
                 return new Id("my.functionTimer", Tags.empty(), null, null, Type.TIMER);
             }
 
-            @Override
-            @SuppressWarnings("NullableProblems")
-            public double mean(TimeUnit unit) {
-                return NaN;
-            }
         };
 
         assertThat(exporter.toFunctionTimerLine(functionTimer)).isEmpty();
