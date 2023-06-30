@@ -18,7 +18,6 @@ package io.micrometer.dynatrace.v2;
 import com.dynatrace.file.util.DynatraceFileBasedConfigurationProvider;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.*;
-import io.micrometer.core.instrument.internal.DefaultLongTaskTimer;
 import io.micrometer.core.ipc.http.HttpSender;
 import io.micrometer.core.lang.Nullable;
 import io.micrometer.core.util.internal.logging.LogEvent;
@@ -39,7 +38,6 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -350,7 +348,8 @@ class DynatraceExporterV2Test {
             while (!Thread.currentThread().isInterrupted()) {
                 try {
                     Thread.sleep(200);
-                } catch (InterruptedException ignored) {
+                }
+                catch (InterruptedException ignored) {
                 }
             }
         });
@@ -358,18 +357,16 @@ class DynatraceExporterV2Test {
 
     @Test
     void longTaskTimerWithSingleValueExportsConsistentData() throws InterruptedException {
-        // In the past, there were problems with the LongTaskTimer:
-        // In cases where only one value was exported, the max and duration were read sequentially
-        // while the clock continued to tick in the background.
-        // Since the Dynatrace API checks this data strictly, data where the sum and max were not exactly
-        // the same when the count was 1 were rejected.
-        // The discrepancy is only caused by the non-atomicity of retrieving max and sum.
-        // As soon as there is more than 1 observation, this problem should disappear since
-        // the Dynatrace API checks for min <= mean <= max, and that should always be the case
-        // when there is more than 1 value. If it is not the case, the underlying data collection
-        // is really broken.
-
-        // Therefore, for this test we need to use the system clock.
+        // In the past, there were problems with the LongTaskTimer: In cases where only
+        // one value was exported, the max and duration were read sequentially while the
+        // clock continued to tick in the background. Since the Dynatrace API checks this
+        // data strictly, data where the sum and max were not exactly the same when the
+        // count was 1 were rejected. The discrepancy is only caused by the non-atomicity
+        // of retrieving max and sum. As soon as there is more than 1 observation, this
+        // problem should disappear since the Dynatrace API checks for min <= mean <= max,
+        // and that should always be the case when there is more than 1 value. If it is
+        // not the case, the underlying data collection is really broken.// Therefore, for
+        // this test we need to use the system clock.
         Clock clock = Clock.SYSTEM;
         DynatraceConfig config = createDefaultDynatraceConfig();
         DynatraceMeterRegistry registry = DynatraceMeterRegistry.builder(config).clock(clock).build();
@@ -379,7 +376,7 @@ class DynatraceExporterV2Test {
 
         // This will run in the background until it is interrupted down below.
         ExecutorService executorService = Executors.newSingleThreadExecutor();
-        executorService.submit(()-> busyWait(ltt));
+        executorService.submit(() -> busyWait(ltt));
 
         // wait for a little bit to ensure there is something to measure
         Thread.sleep(500);
@@ -394,22 +391,22 @@ class DynatraceExporterV2Test {
 
         // A String[]: "min=1", "max=1", "sum=1", "count=1"
         String[] gaugeComponents = lines.get(0).split(" ")[1].split(",");
-        // trim the "min=", "max=", etc. prefixes and keep only the string representations of the values.
+        // trim the "min=", "max=", etc. prefixes and keep only the string representations
+        // of the values.
         String min = gaugeComponents[1].split("=")[1];
         String max = gaugeComponents[2].split("=")[1];
         String sum = gaugeComponents[3].split("=")[1];
         String count = gaugeComponents[4].split("=")[1];
 
-        assertThat(min)
-            .isEqualTo(sum)
-            .isEqualTo(max);
+        assertThat(min).isEqualTo(sum).isEqualTo(max);
 
         assertThat(count).isEqualTo("1");
     }
 
     @Test
     void longTaskTimerWithMultipleValuesExportsConsistentData() throws InterruptedException {
-        // For this test we need to use the system clock. See longTaskTimerWithSingleValueExportsConsistentData for
+        // For this test we need to use the system clock. See
+        // longTaskTimerWithSingleValueExportsConsistentData for
         // more info
         Clock clock = Clock.SYSTEM;
         DynatraceConfig config = createDefaultDynatraceConfig();
@@ -436,13 +433,14 @@ class DynatraceExporterV2Test {
 
         // A String[]: "min=1", "max=1", "sum=1", "count=1"
         String[] gaugeComponents = lines.get(0).split(" ")[1].split(",");
-        // trim the "min=", "max=", etc. prefixes and keep only the string representations of the values.
 
+        // trim the "min=", "max=", etc. prefixes and keep only the string representations
+        // of the values.
         double min = Double.parseDouble(gaugeComponents[1].split("=")[1]);
         double max = Double.parseDouble(gaugeComponents[2].split("=")[1]);
         double sum = Double.parseDouble(gaugeComponents[3].split("=")[1]);
         int count = Integer.parseInt(gaugeComponents[4].split("=")[1]);
-        double mean = sum/count;
+        double mean = sum / count;
 
         assertThat(min).isLessThanOrEqualTo(mean);
         assertThat(mean).isLessThanOrEqualTo(max);
