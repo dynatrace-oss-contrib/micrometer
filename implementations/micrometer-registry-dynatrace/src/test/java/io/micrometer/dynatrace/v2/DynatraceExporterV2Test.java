@@ -365,8 +365,13 @@ class DynatraceExporterV2Test {
         // of retrieving max and sum. As soon as there is more than 1 observation, this
         // problem should disappear since the Dynatrace API checks for min <= mean <= max,
         // and that should always be the case when there is more than 1 value. If it is
-        // not the case, the underlying data collection is really broken.// Therefore, for
-        // this test we need to use the system clock.
+        // not the case, the underlying data collection is really broken. For example, we
+        // saw this issue with the metric 'http.server.requests.active', when there was
+        // exactly one request in-flight. The retrieval of max and total are not
+        // synchronized, so the clock continues to tick and results in two different
+        // values (e.g., max=0.764418,sum=0.700539,count=1, which is invalid according to
+        // the Dynatrace specification). Therefore, for this test we need to use the
+        // system clock.
         Clock clock = Clock.SYSTEM;
         DynatraceConfig config = createDefaultDynatraceConfig();
         DynatraceMeterRegistry registry = DynatraceMeterRegistry.builder(config).clock(clock).build();
