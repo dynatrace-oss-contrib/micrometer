@@ -431,7 +431,7 @@ class DynatraceExporterV2Test {
         // assertions
         assertThat(lines).hasSize(1);
 
-        // A String[]: "min=1", "max=1", "sum=1", "count=1"
+        // A String[]: "min=x", "max=x", "sum=x", "count=x"
         String[] gaugeComponents = lines.get(0).split(" ")[1].split(",");
 
         // trim the "min=", "max=", etc. prefixes and keep only the string representations
