@@ -302,15 +302,8 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     }
 
     Stream<String> toFunctionTimerLine(FunctionTimer meter) {
-        double count = 0;
-        double total = 0;
-
-        // This should ensure that no function timer values can be added while values are
-        // read, leading to an invalid intermediate state.
-        synchronized (meter) {
-            count = meter.count();
-            total = meter.totalTime(getBaseTimeUnit());
-        }
+        double count = meter.count();
+        double total = meter.totalTime(getBaseTimeUnit());
 
         long countLong = (long) count;
 
@@ -318,9 +311,11 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
             logger.debug("Timer with 0 count dropped: {}", meter.getId().getName());
             return Stream.empty();
         }
+        else if (countLong == 1) {
+            return createSummaryLine(meter, total, total, total, 1);
+        }
 
-        double average = total / count;
-
+        double average = total / countLong;
         return createSummaryLine(meter, average, average, total, countLong);
     }
 
