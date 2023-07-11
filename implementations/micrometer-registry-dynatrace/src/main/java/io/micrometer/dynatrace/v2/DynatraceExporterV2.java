@@ -157,6 +157,14 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
             });
         }
 
+        seenMetadata.values().forEach(line -> {
+            batch.add(line);
+            if (batch.size() == partitionSize) {
+                send(batch);
+                batch.clear();
+            }
+        });
+
         if (!batch.isEmpty()) {
             send(batch);
         }
@@ -209,11 +217,13 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
     private void storeMetadataLine(Metric.Builder metricBuilder, Map<String, String> seenMetadata, String metricType)
             throws MetricException {
+
         // Metadata line has to be generated in every case:
-        // 1. If no metadata is yet set, generate it
+        // 1. If no metadata is yet set, generate and set it
         // 2. If metadata is already present
         // 2.1. if it is the same as the already present, do nothing (need to .equals())
         // 2.2. if it is different, warn and drop
+        // 3. If metadata is already set as invalid - do nothing
         String metadataLine = metricBuilder.serializeMetadataLine();
         if (metadataLine == null) {
             // if there is no metadata, there is no need to check for pre-existing
@@ -221,15 +231,6 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
             return;
         }
 
-        // TODO: In the case where we have already set the metadata to null, we don't need
-        // to serialize the entire line, just the beginning
-
-        // TODO: substring _will_ create a new object every time, unless the value has
-        // already been "seen" by the JVM.
-        // Therefore, it should not matter whether we explicitly create a new String, or
-        // we use substring.
-        // We could use that to ensure the metadata line is only created when the entry in
-        // the map is not null
         String metricKey = metricBuilder.getNormalizedMetricKey();
         String key = metadataLine.substring(1, metricKey.length() + 1 + metricType.length());
 
