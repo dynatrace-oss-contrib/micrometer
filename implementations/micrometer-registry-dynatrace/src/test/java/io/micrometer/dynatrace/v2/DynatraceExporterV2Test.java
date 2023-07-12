@@ -601,15 +601,51 @@ class DynatraceExporterV2Test {
         assertThat(secondReqBody).isEqualTo("test.counter,dt.metrics.source=micrometer count,delta=30.0");
     }
 
-//    @Test
-//    void metadataIsSerialized() {
-//        Gauge.builder("my.gauge", () -> 1.23).description("my.description").baseUnit("Bytes").register(meterRegistry);
-//        Gauge gauge = meterRegistry.find("my.gauge").gauge();
-//        List<String> lines = exporter.toGaugeLine(gauge, SEEN_METADATA).collect(Collectors.toList());
-//        assertThat(lines).hasSize(2);
-//        assertThat(lines.get(0)).isEqualTo("my.gauge,dt.metrics.source=micrometer gauge,1.23 " + clock.wallTime());
-//        assertThat(lines.get(1)).isEqualTo("#my.gauge gauge dt.meta.unit=Bytes,dt.meta.description=my.description");
-//    }
+    @Test
+    void gaugeMetadataIsSerialized() {
+        HttpSender.Request.Builder builder = spy(HttpSender.Request.build(config.uri(), httpClient));
+        when(httpClient.post(anyString())).thenReturn(builder);
+
+        Gauge.builder("my.gauge", () -> 1.23).description("my.description").baseUnit("Liters").register(meterRegistry);
+        exporter.export(meterRegistry.getMeters());
+
+        ArgumentCaptor<String> stringArgumentCaptor = ArgumentCaptor.forClass(String.class);
+        verify(builder).withPlainText(stringArgumentCaptor.capture());
+        // get the data set to the request and split it into lines on the newline char.
+        List<String> lines = Arrays.asList(stringArgumentCaptor.getValue().split("\n"));
+
+        assertThat(lines)
+            .hasSize(2)
+                .containsExactly(
+                    "my.gauge,dt.metrics.source=micrometer gauge,1.23 " + clock.wallTime(),
+                    "#my.gauge gauge dt.meta.description=my.description,dt.meta.unit=Liters");
+    }
+
+    @Test
+    void counterMetadataIsSerialized() {
+        HttpSender.Request.Builder builder = spy(HttpSender.Request.build(config.uri(), httpClient));
+        when(httpClient.post(anyString())).thenReturn(builder);
+
+        Counter counter = Counter.builder("my.count").description("count description").baseUnit("Bytes").register(meterRegistry);
+        counter.increment(5.234);
+        exporter.export(meterRegistry.getMeters());
+
+        ArgumentCaptor<String> stringArgumentCaptor = ArgumentCaptor.forClass(String.class);
+        verify(builder).withPlainText(stringArgumentCaptor.capture());
+        List<String> lines = Arrays.asList(stringArgumentCaptor.getValue().split("\n"));
+
+        assertThat(lines)
+            .hasSize(2)
+            .containsExactly(
+                "my.gauge,dt.metrics.source=micrometer gauge,1.23 " + clock.wallTime(),
+                "#my.gauge gauge dt.meta.description=count\\ description,dt.meta.unit=Bytes");
+    }
+
+    // todo tests:
+    // * test with lines limit is reached
+    // * test the behaviour when the same metadata is set twice
+    // * when different metadata is set
+
 
     private DynatraceExporterV2 createExporter(HttpSender httpClient) {
         return new DynatraceExporterV2(config, clock, httpClient);
