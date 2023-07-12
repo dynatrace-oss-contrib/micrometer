@@ -601,6 +601,16 @@ class DynatraceExporterV2Test {
         assertThat(secondReqBody).isEqualTo("test.counter,dt.metrics.source=micrometer count,delta=30.0");
     }
 
+//    @Test
+//    void metadataIsSerialized() {
+//        Gauge.builder("my.gauge", () -> 1.23).description("my.description").baseUnit("Bytes").register(meterRegistry);
+//        Gauge gauge = meterRegistry.find("my.gauge").gauge();
+//        List<String> lines = exporter.toGaugeLine(gauge, SEEN_METADATA).collect(Collectors.toList());
+//        assertThat(lines).hasSize(2);
+//        assertThat(lines.get(0)).isEqualTo("my.gauge,dt.metrics.source=micrometer gauge,1.23 " + clock.wallTime());
+//        assertThat(lines.get(1)).isEqualTo("#my.gauge gauge dt.meta.unit=Bytes,dt.meta.description=my.description");
+//    }
+
     private DynatraceExporterV2 createExporter(HttpSender httpClient) {
         return new DynatraceExporterV2(config, clock, httpClient);
     }
