@@ -628,6 +628,7 @@ class DynatraceExporterV2Test {
 
         Counter counter = Counter.builder("my.count").description("count description").baseUnit("Bytes").register(meterRegistry);
         counter.increment(5.234);
+        clock.add(config.step());
         exporter.export(meterRegistry.getMeters());
 
         ArgumentCaptor<String> stringArgumentCaptor = ArgumentCaptor.forClass(String.class);
@@ -637,8 +638,85 @@ class DynatraceExporterV2Test {
         assertThat(lines)
             .hasSize(2)
             .containsExactly(
+                "my.count,dt.metrics.source=micrometer count,delta=5.234 " + clock.wallTime(),
+                "#my.count count dt.meta.description=count\\ description,dt.meta.unit=Bytes");
+    }
+
+    @Test
+    void sendsTwoRequestsWhenSizeLimitIsReached() {
+        HttpSender.Request.Builder firstReq = spy(HttpSender.Request.build(config.uri(), httpClient));
+        HttpSender.Request.Builder secondReq = spy(HttpSender.Request.build(config.uri(), httpClient));
+        when(httpClient.post(anyString())).thenReturn(firstReq).thenReturn(secondReq);
+
+
+        // create a dynatrace config (same as the one returned by createDefaultDynatraceConfig) but with a batch size of 2.
+        DynatraceConfig config = new DynatraceConfig() {
+            @Override
+            public String get(String key) {
+                return null;
+            }
+
+            @Override
+            @SuppressWarnings("NullableProblems")
+            public String uri() {
+                return "http://localhost";
+            }
+
+            @Override
+            @SuppressWarnings("NullableProblems")
+            public String apiToken() {
+                return "apiToken";
+            }
+
+            @Override
+            @SuppressWarnings("NullableProblems")
+            public DynatraceApiVersion apiVersion() {
+                return DynatraceApiVersion.V2;
+            }
+
+            @Override
+            public int batchSize() {
+                return 3;
+            }
+        };
+
+        DynatraceExporterV2 exporter = new DynatraceExporterV2(config, clock, httpClient);
+        DynatraceMeterRegistry meterRegistry = DynatraceMeterRegistry.builder(config).httpClient(httpClient).clock(clock).build();
+
+        Counter counter = Counter.builder("my.count").description("count description").baseUnit("Bytes").register(meterRegistry);
+        counter.increment(5.234);
+        Gauge.builder("my.gauge", () -> 1.23).description("my.description").baseUnit("Liters").register(meterRegistry);
+        clock.add(config.step());
+        exporter.export(meterRegistry.getMeters());
+
+
+        ArgumentCaptor<String> firstReqCap = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> secondReqCap = ArgumentCaptor.forClass(String.class);
+        verify(firstReq).withPlainText(firstReqCap.capture());
+        verify(secondReq).withPlainText(secondReqCap.capture());
+
+        List<String> firstReqLines = Arrays.asList(firstReqCap.getValue().split("\n"));
+        List<String> secondReqLines = Arrays.asList(secondReqCap.getValue().split("\n"));
+
+        // the first request will contain the metric lines
+        assertThat(firstReqLines)
+            .hasSize(3)
+            .containsExactly(
+                "my.count,dt.metrics.source=micrometer count,delta=5.234 " + clock.wallTime(),
                 "my.gauge,dt.metrics.source=micrometer gauge,1.23 " + clock.wallTime(),
-                "#my.gauge gauge dt.meta.description=count\\ description,dt.meta.unit=Bytes");
+                "#my.count count dt.meta.description=count\\ description,dt.meta.unit=Bytes"
+            );
+
+        // the second request will the leftover metadata line
+        assertThat(secondReqLines)
+            .hasSize(1)
+            .containsExactly(
+                "#my.gauge gauge dt.meta.description=my.description,dt.meta.unit=Liters"
+            );
+
+
+
+
     }
 
     // todo tests:
