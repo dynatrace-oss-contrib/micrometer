@@ -208,7 +208,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
             }
             Metric.Builder metricBuilder = createMetricBuilder(meter).setDoubleGaugeValue(value);
 
-            storeMetadataLine(metricBuilder, seenMetadata, METRIC_TYPE_GAUGE);
+            storeMetadataLine(metricBuilder, seenMetadata);
 
             return metricBuilder.serializeMetricLine();
         }
@@ -219,7 +219,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         return null;
     }
 
-    private void storeMetadataLine(Metric.Builder metricBuilder, Map<String, String> seenMetadata, String metricType)
+    private void storeMetadataLine(Metric.Builder metricBuilder, Map<String, String> seenMetadata)
             throws MetricException {
         String key = metricBuilder.getNormalizedMetricKey();
 
@@ -257,9 +257,8 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         try {
             Metric.Builder metricBuilder = createMetricBuilder(meter)
                 .setDoubleCounterValueDelta(measurement.getValue());
-            String metadataLine = metricBuilder.serializeMetadataLine();
 
-            storeMetadataLine(metricBuilder, seenMetadata, METRIC_TYPE_COUNTER);
+            storeMetadataLine(metricBuilder, seenMetadata);
 
             return metricBuilder.serializeMetricLine();
         }
@@ -314,7 +313,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         try {
             Metric.Builder builder = createMetricBuilder(meter).setDoubleSummaryValue(min, max, total, count);
 
-            storeMetadataLine(builder, seenMetadata, METRIC_TYPE_GAUGE);
+            storeMetadataLine(builder, seenMetadata);
 
             return Stream.of(builder.serializeMetricLine());
         }
