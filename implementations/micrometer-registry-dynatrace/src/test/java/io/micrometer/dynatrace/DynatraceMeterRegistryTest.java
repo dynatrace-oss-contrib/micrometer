@@ -114,7 +114,7 @@ class DynatraceMeterRegistryTest {
         assertThat(request.getEntity()).asString()
             .hasLineCount(2)
             .contains("my.timer,dt.metrics.source=micrometer gauge,min=22.0,max=50.0,sum=72.0,count=2 "
-                    + clock.wallTime());
+                    + clock.wallTime(), "#my.timer gauge dt.meta.unit=milliseconds");
 
         // both are bigger than the previous min and smaller than the previous max. They
         // will only show up if the

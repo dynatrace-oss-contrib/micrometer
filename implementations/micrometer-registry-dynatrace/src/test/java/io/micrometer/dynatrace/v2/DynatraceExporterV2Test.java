@@ -621,7 +621,7 @@ class DynatraceExporterV2Test {
     }
 
     @Test
-    void metadataIsSerialized() {
+    void counterMetadataIsSerialized() {
         HttpSender.Request.Builder builder = spy(HttpSender.Request.build(config.uri(), httpClient));
         when(httpClient.post(anyString())).thenReturn(builder);
 
@@ -643,7 +643,7 @@ class DynatraceExporterV2Test {
     }
 
     @Test
-    void sendsTwoRequestsWhenSizeLimitIsReached() {
+    void sendsTwoRequestsWhenSizeLimitIsReachedWithMetadata() {
         HttpSender.Request.Builder firstReq = spy(HttpSender.Request.build(config.uri(), httpClient));
         HttpSender.Request.Builder secondReq = spy(HttpSender.Request.build(config.uri(), httpClient));
         when(httpClient.post(anyString())).thenReturn(firstReq).thenReturn(secondReq);
