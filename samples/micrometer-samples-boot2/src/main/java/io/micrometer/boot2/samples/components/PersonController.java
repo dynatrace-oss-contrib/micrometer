@@ -17,7 +17,6 @@ package io.micrometer.boot2.samples.components;
 
 import io.micrometer.core.annotation.Timed;
 import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -54,16 +53,6 @@ public class PersonController {
     @GetMapping("/api/person/{id}")
     @Timed("person.requests")
     public Person person(@PathVariable String id) {
-        Gauge.builder("my.gauge", () -> 3)
-            .tags("attribute.a", "a")
-            .baseUnit("unit.a")
-            .register(registry);
-
-        Gauge.builder("my.gauge", () -> 5)
-            .tags("attribute.a", "b")
-            .baseUnit("unit.b")
-            .register(registry);
-
         String userType = "0".equals(id) ? "admin" : "regular";
         Counter.builder("person.requests").tag("type", userType).register(registry).increment();
 
