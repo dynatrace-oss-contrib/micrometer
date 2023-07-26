@@ -186,13 +186,13 @@ class DynatraceConfigTest {
         Map<String, String> properties = new HashMap<>();
         properties.put("dynatrace.apiVersion", "v1");
         properties.put("dynatrace.apiToken", "my.token");
-        properties.put("dynatrace.uri", "http://my.uri.com");
+        properties.put("dynatrace.uri", "https://my.uri.com");
         properties.put("dynatrace.deviceId", "my.device.id");
         DynatraceConfig config = properties::get;
 
         assertThat(config.apiVersion()).isEqualTo(DynatraceApiVersion.V1);
         assertThat(config.apiToken()).isEqualTo("my.token");
-        assertThat(config.uri()).isEqualTo("http://my.uri.com");
+        assertThat(config.uri()).isEqualTo("https://my.uri.com");
         assertThat(config.deviceId()).isEqualTo("my.device.id");
         assertThat(config.metricKeyPrefix()).isEmpty();
         assertThat(config.defaultDimensions()).isEmpty();
