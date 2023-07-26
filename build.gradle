@@ -402,7 +402,7 @@ subprojects {
     description = 'Application monitoring instrumentation facade'
 
     repositories {
-        maven {
+        maven { 
             url 'https://repo.spring.io/snapshot/'
             content { includeGroup 'io.micrometer' }
         }

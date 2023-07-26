@@ -68,10 +68,6 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     private static final Map<String, String> staticDimensions = Collections.singletonMap("dt.metrics.source",
             "micrometer");
 
-    private static final String METRIC_TYPE_GAUGE = "gauge";
-
-    private static final String METRIC_TYPE_COUNTER = "count";
-
     // This should be non-static for MockLoggerFactory.injectLogger() in tests.
     private final InternalLogger logger = InternalLoggerFactory.getInstance(DynatraceExporterV2.class);
 
