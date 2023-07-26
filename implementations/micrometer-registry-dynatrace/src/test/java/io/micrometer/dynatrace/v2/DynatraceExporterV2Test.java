@@ -627,7 +627,7 @@ class DynatraceExporterV2Test {
     }
 
     @Test
-    void counterMetadataIsSerialized() {
+    void metadataIsSerialized() {
         HttpSender.Request.Builder builder = spy(HttpSender.Request.build(config.uri(), httpClient));
         when(httpClient.post(anyString())).thenReturn(builder);
 
@@ -720,10 +720,77 @@ class DynatraceExporterV2Test {
             );
     }
 
-    // todo tests:
-    // * test the behaviour when the same metadata is set twice
-    // * when different metadata is set
+    @Test
+    void metadataIsSerializedOnceWhenSetTwice() {
+        HttpSender.Request.Builder builder = spy(HttpSender.Request.build(config.uri(), httpClient));
+        when(httpClient.post(anyString())).thenReturn(builder);
 
+        // both counters have the same unit and description, but other tags differ
+        Counter counter1 = Counter
+            .builder("my.count")
+            .description("count description")
+            .baseUnit("Bytes")
+            .tag("counter-number", "counter1")
+            .register(meterRegistry);
+        Counter counter2 = Counter
+            .builder("my.count")
+            .description("count description")
+            .baseUnit("Bytes")
+            .tag("counter-number", "counter2")
+            .register(meterRegistry);
+
+        counter1.increment(5.234);
+        counter2.increment(2.345);
+        clock.add(config.step());
+        exporter.export(meterRegistry.getMeters());
+
+        ArgumentCaptor<String> stringArgumentCaptor = ArgumentCaptor.forClass(String.class);
+        verify(builder).withPlainText(stringArgumentCaptor.capture());
+        List<String> lines = Arrays.asList(stringArgumentCaptor.getValue().split("\n"));
+
+        assertThat(lines)
+            .hasSize(3)
+            .containsExactly(
+                "my.count,counter-number=counter1,dt.metrics.source=micrometer count,delta=5.234 " + clock.wallTime(),
+                "my.count,counter-number=counter2,dt.metrics.source=micrometer count,delta=2.345 " + clock.wallTime(),
+                "#my.count count dt.meta.description=count\\ description,dt.meta.unit=Bytes");
+    }
+
+    @Test
+    void conflictingMetadataIsIgnored() {
+        HttpSender.Request.Builder builder = spy(HttpSender.Request.build(config.uri(), httpClient));
+        when(httpClient.post(anyString())).thenReturn(builder);
+
+        // the unit and description are different between counters, while the name stays the same.
+        Counter counter1 = Counter
+            .builder("my.count")
+            .description("count 1 description")
+            .baseUnit("Bytes")
+            .tag("counter-number", "counter1")
+            .register(meterRegistry);
+        Counter counter2 = Counter
+            .builder("my.count")
+            .description("count description")
+            .baseUnit("not Bytes")
+            .tag("counter-number", "counter2")
+            .register(meterRegistry);
+
+        counter1.increment(5.234);
+        counter2.increment(2.345);
+        clock.add(config.step());
+        exporter.export(meterRegistry.getMeters());
+
+        ArgumentCaptor<String> stringArgumentCaptor = ArgumentCaptor.forClass(String.class);
+        verify(builder).withPlainText(stringArgumentCaptor.capture());
+        List<String> lines = Arrays.asList(stringArgumentCaptor.getValue().split("\n"));
+
+        assertThat(lines)
+            .hasSize(2)
+            .containsExactly(
+                "my.count,counter-number=counter1,dt.metrics.source=micrometer count,delta=5.234 " + clock.wallTime(),
+                "my.count,counter-number=counter2,dt.metrics.source=micrometer count,delta=2.345 " + clock.wallTime()
+            );
+    }
 
     private DynatraceExporterV2 createExporter(HttpSender httpClient) {
         return new DynatraceExporterV2(config, clock, httpClient);
