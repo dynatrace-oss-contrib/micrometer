@@ -493,20 +493,16 @@ class DynatraceExporterV2Test {
 
         exporter.export(Arrays.asList(counter, gauge, timer));
 
-        verify(httpClient).send(
-            assertArg(request -> {
+        verify(httpClient).send(assertArg(request -> {
             assertThat(request.getRequestHeaders()).containsOnly(entry("Content-Type", "text/plain"),
                     entry("User-Agent", "micrometer"), entry("Authorization", "Api-Token apiToken"));
-            assertThat(request.getEntity())
-                .asString()
+            assertThat(request.getEntity()).asString()
                 .hasLineCount(4)
-                .containsSubsequence(
-                    "my.counter,dt.metrics.source=micrometer count,delta=12.0 " + clock.wallTime(),
-                    "my.gauge,dt.metrics.source=micrometer gauge,42.0 " + clock.wallTime(),
-                    "my.timer,dt.metrics.source=micrometer gauge,min=22.0,max=22.0,sum=22.0,count=1 "
-                        + clock.wallTime(),
-                    "#my.timer gauge dt.meta.unit=milliseconds"
-                );
+                .containsSubsequence("my.counter,dt.metrics.source=micrometer count,delta=12.0 " + clock.wallTime(),
+                        "my.gauge,dt.metrics.source=micrometer gauge,42.0 " + clock.wallTime(),
+                        "my.timer,dt.metrics.source=micrometer gauge,min=22.0,max=22.0,sum=22.0,count=1 "
+                                + clock.wallTime(),
+                        "#my.timer gauge dt.meta.unit=milliseconds");
         }));
     }
 
@@ -619,10 +615,8 @@ class DynatraceExporterV2Test {
         // get the data set to the request and split it into lines on the newline char.
         List<String> lines = Arrays.asList(stringArgumentCaptor.getValue().split("\n"));
 
-        assertThat(lines)
-            .hasSize(2)
-                .containsExactly(
-                    "my.gauge,dt.metrics.source=micrometer gauge,1.23 " + clock.wallTime(),
+        assertThat(lines).hasSize(2)
+            .containsExactly("my.gauge,dt.metrics.source=micrometer gauge,1.23 " + clock.wallTime(),
                     "#my.gauge gauge dt.meta.description=my.description,dt.meta.unit=Liters");
     }
 
@@ -631,7 +625,10 @@ class DynatraceExporterV2Test {
         HttpSender.Request.Builder builder = spy(HttpSender.Request.build(config.uri(), httpClient));
         when(httpClient.post(anyString())).thenReturn(builder);
 
-        Counter counter = Counter.builder("my.count").description("count description").baseUnit("Bytes").register(meterRegistry);
+        Counter counter = Counter.builder("my.count")
+            .description("count description")
+            .baseUnit("Bytes")
+            .register(meterRegistry);
         counter.increment(5.234);
         clock.add(config.step());
         exporter.export(meterRegistry.getMeters());
@@ -640,11 +637,9 @@ class DynatraceExporterV2Test {
         verify(builder).withPlainText(stringArgumentCaptor.capture());
         List<String> lines = Arrays.asList(stringArgumentCaptor.getValue().split("\n"));
 
-        assertThat(lines)
-            .hasSize(2)
-            .containsExactly(
-                "my.count,dt.metrics.source=micrometer count,delta=5.234 " + clock.wallTime(),
-                "#my.count count dt.meta.description=count\\ description,dt.meta.unit=Bytes");
+        assertThat(lines).hasSize(2)
+            .containsExactly("my.count,dt.metrics.source=micrometer count,delta=5.234 " + clock.wallTime(),
+                    "#my.count count dt.meta.description=count\\ description,dt.meta.unit=Bytes");
     }
 
     @Test
@@ -653,8 +648,8 @@ class DynatraceExporterV2Test {
         HttpSender.Request.Builder secondReq = spy(HttpSender.Request.build(config.uri(), httpClient));
         when(httpClient.post(anyString())).thenReturn(firstReq).thenReturn(secondReq);
 
-
-        // create a dynatrace config (same as the one returned by createDefaultDynatraceConfig) but with a batch size of 2.
+        // create a dynatrace config (same as the one returned by
+        // createDefaultDynatraceConfig) but with a batch size of 2.
         DynatraceConfig config = new DynatraceConfig() {
             @Override
             public String get(String key) {
@@ -686,14 +681,19 @@ class DynatraceExporterV2Test {
         };
 
         DynatraceExporterV2 exporter = new DynatraceExporterV2(config, clock, httpClient);
-        DynatraceMeterRegistry meterRegistry = DynatraceMeterRegistry.builder(config).httpClient(httpClient).clock(clock).build();
+        DynatraceMeterRegistry meterRegistry = DynatraceMeterRegistry.builder(config)
+            .httpClient(httpClient)
+            .clock(clock)
+            .build();
 
-        Counter counter = Counter.builder("my.count").description("count description").baseUnit("Bytes").register(meterRegistry);
+        Counter counter = Counter.builder("my.count")
+            .description("count description")
+            .baseUnit("Bytes")
+            .register(meterRegistry);
         counter.increment(5.234);
         Gauge.builder("my.gauge", () -> 1.23).description("my.description").baseUnit("Liters").register(meterRegistry);
         clock.add(config.step());
         exporter.export(meterRegistry.getMeters());
-
 
         ArgumentCaptor<String> firstReqCap = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> secondReqCap = ArgumentCaptor.forClass(String.class);
@@ -704,20 +704,14 @@ class DynatraceExporterV2Test {
         List<String> secondReqLines = Arrays.asList(secondReqCap.getValue().split("\n"));
 
         // the first request will contain the metric lines
-        assertThat(firstReqLines)
-            .hasSize(3)
-            .containsExactly(
-                "my.count,dt.metrics.source=micrometer count,delta=5.234 " + clock.wallTime(),
-                "my.gauge,dt.metrics.source=micrometer gauge,1.23 " + clock.wallTime(),
-                "#my.count count dt.meta.description=count\\ description,dt.meta.unit=Bytes"
-            );
+        assertThat(firstReqLines).hasSize(3)
+            .containsExactly("my.count,dt.metrics.source=micrometer count,delta=5.234 " + clock.wallTime(),
+                    "my.gauge,dt.metrics.source=micrometer gauge,1.23 " + clock.wallTime(),
+                    "#my.count count dt.meta.description=count\\ description,dt.meta.unit=Bytes");
 
         // the second request will the leftover metadata line
-        assertThat(secondReqLines)
-            .hasSize(1)
-            .containsExactly(
-                "#my.gauge gauge dt.meta.description=my.description,dt.meta.unit=Liters"
-            );
+        assertThat(secondReqLines).hasSize(1)
+            .containsExactly("#my.gauge gauge dt.meta.description=my.description,dt.meta.unit=Liters");
     }
 
     @Test
@@ -726,14 +720,12 @@ class DynatraceExporterV2Test {
         when(httpClient.post(anyString())).thenReturn(builder);
 
         // both counters have the same unit and description, but other tags differ
-        Counter counter1 = Counter
-            .builder("my.count")
+        Counter counter1 = Counter.builder("my.count")
             .description("count description")
             .baseUnit("Bytes")
             .tag("counter-number", "counter1")
             .register(meterRegistry);
-        Counter counter2 = Counter
-            .builder("my.count")
+        Counter counter2 = Counter.builder("my.count")
             .description("count description")
             .baseUnit("Bytes")
             .tag("counter-number", "counter2")
@@ -748,12 +740,13 @@ class DynatraceExporterV2Test {
         verify(builder).withPlainText(stringArgumentCaptor.capture());
         List<String> lines = Arrays.asList(stringArgumentCaptor.getValue().split("\n"));
 
-        assertThat(lines)
-            .hasSize(3)
+        assertThat(lines).hasSize(3)
             .containsExactly(
-                "my.count,counter-number=counter1,dt.metrics.source=micrometer count,delta=5.234 " + clock.wallTime(),
-                "my.count,counter-number=counter2,dt.metrics.source=micrometer count,delta=2.345 " + clock.wallTime(),
-                "#my.count count dt.meta.description=count\\ description,dt.meta.unit=Bytes");
+                    "my.count,counter-number=counter1,dt.metrics.source=micrometer count,delta=5.234 "
+                            + clock.wallTime(),
+                    "my.count,counter-number=counter2,dt.metrics.source=micrometer count,delta=2.345 "
+                            + clock.wallTime(),
+                    "#my.count count dt.meta.description=count\\ description,dt.meta.unit=Bytes");
     }
 
     @Test
@@ -761,15 +754,14 @@ class DynatraceExporterV2Test {
         HttpSender.Request.Builder builder = spy(HttpSender.Request.build(config.uri(), httpClient));
         when(httpClient.post(anyString())).thenReturn(builder);
 
-        // the unit and description are different between counters, while the name stays the same.
-        Counter counter1 = Counter
-            .builder("my.count")
+        // the unit and description are different between counters, while the name stays
+        // the same.
+        Counter counter1 = Counter.builder("my.count")
             .description("count 1 description")
             .baseUnit("Bytes")
             .tag("counter-number", "counter1")
             .register(meterRegistry);
-        Counter counter2 = Counter
-            .builder("my.count")
+        Counter counter2 = Counter.builder("my.count")
             .description("count description")
             .baseUnit("not Bytes")
             .tag("counter-number", "counter2")
@@ -784,12 +776,12 @@ class DynatraceExporterV2Test {
         verify(builder).withPlainText(stringArgumentCaptor.capture());
         List<String> lines = Arrays.asList(stringArgumentCaptor.getValue().split("\n"));
 
-        assertThat(lines)
-            .hasSize(2)
+        assertThat(lines).hasSize(2)
             .containsExactly(
-                "my.count,counter-number=counter1,dt.metrics.source=micrometer count,delta=5.234 " + clock.wallTime(),
-                "my.count,counter-number=counter2,dt.metrics.source=micrometer count,delta=2.345 " + clock.wallTime()
-            );
+                    "my.count,counter-number=counter1,dt.metrics.source=micrometer count,delta=5.234 "
+                            + clock.wallTime(),
+                    "my.count,counter-number=counter2,dt.metrics.source=micrometer count,delta=2.345 "
+                            + clock.wallTime());
     }
 
     private DynatraceExporterV2 createExporter(HttpSender httpClient) {

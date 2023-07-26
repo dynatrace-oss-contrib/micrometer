@@ -226,24 +226,29 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         if (!seenMetadata.containsKey(key)) {
             // if there is no metadata associated with the key, add it.
             seenMetadata.put(key, metricBuilder.serializeMetadataLine());
-        } else {
+        }
+        else {
             // get the previously stored metadata line
             String previousMetadataLine = seenMetadata.get(key);
-            // if the previous line is not null, a metadata object had already been set in the past and no conflicting metadata lines had been added thereafter.
+            // if the previous line is not null, a metadata object had already been set in
+            // the past and no conflicting metadata lines had been added thereafter.
             if (previousMetadataLine != null) {
                 String newMetadataLine = metricBuilder.serializeMetadataLine();
-                // if the new metadata line conflicts with the old one, we don't know which one is the correct metadata and will not export any.
-                // the map entry is set to null to ensure other metadata lines cannot be set for this metric key.
+                // if the new metadata line conflicts with the old one, we don't know
+                // which one is the correct metadata and will not export any.
+                // the map entry is set to null to ensure other metadata lines cannot be
+                // set for this metric key.
                 if (!previousMetadataLine.equals(newMetadataLine)) {
                     seenMetadata.put(key, null);
                     logger.warn(
-                        "Metadata discrepancy detected:\n" + "original metadata:\t{}\n" + "tried to set new:\t{}\n"
-                            + "Metadata for metric key {} will not be sent.",
-                        previousMetadataLine, newMetadataLine, key);
+                            "Metadata discrepancy detected:\n" + "original metadata:\t{}\n" + "tried to set new:\t{}\n"
+                                    + "Metadata for metric key {} will not be sent.",
+                            previousMetadataLine, newMetadataLine, key);
                 }
             }
             // else:
-            // the key exists, but the value is null, so a conflicting state has been identified before.
+            // the key exists, but the value is null, so a conflicting state has been
+            // identified before.
             // ignore any other metadata for this key.
         }
     }
