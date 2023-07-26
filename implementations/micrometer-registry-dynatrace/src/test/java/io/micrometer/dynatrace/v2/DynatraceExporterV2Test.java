@@ -649,7 +649,7 @@ class DynatraceExporterV2Test {
         when(httpClient.post(anyString())).thenReturn(firstReq).thenReturn(secondReq);
 
         // create a dynatrace config (same as the one returned by
-        // createDefaultDynatraceConfig) but with a batch size of 2.
+        // createDefaultDynatraceConfig) but with a batch size of 3.
         DynatraceConfig config = new DynatraceConfig() {
             @Override
             public String get(String key) {
@@ -782,6 +782,65 @@ class DynatraceExporterV2Test {
                             + clock.wallTime(),
                     "my.count,counter-number=counter2,dt.metrics.source=micrometer count,delta=2.345 "
                             + clock.wallTime());
+    }
+
+    @Test
+    void metadataIsNotExportedWhenTurnedOff() {
+        HttpSender.Request.Builder builder = spy(HttpSender.Request.build(config.uri(), httpClient));
+        when(httpClient.post(anyString())).thenReturn(builder);
+
+        // create a dynatrace config (same as the one returned by
+        // createDefaultDynatraceConfig() but with metadata turned off
+        DynatraceConfig config = new DynatraceConfig() {
+            @Override
+            public String get(String key) {
+                return null;
+            }
+
+            @Override
+            @SuppressWarnings("NullableProblems")
+            public String uri() {
+                return "http://localhost";
+            }
+
+            @Override
+            @SuppressWarnings("NullableProblems")
+            public String apiToken() {
+                return "apiToken";
+            }
+
+            @Override
+            @SuppressWarnings("NullableProblems")
+            public DynatraceApiVersion apiVersion() {
+                return DynatraceApiVersion.V2;
+            }
+
+            @Override
+            public boolean exportMetadata() {
+                return false;
+            }
+        };
+
+        DynatraceExporterV2 exporter = new DynatraceExporterV2(config, clock, httpClient);
+        DynatraceMeterRegistry meterRegistry = DynatraceMeterRegistry.builder(config)
+            .httpClient(httpClient)
+            .clock(clock)
+            .build();
+
+        Counter counter = Counter.builder("my.count")
+            .description("count description")
+            .baseUnit("Bytes")
+            .register(meterRegistry);
+        counter.increment(5.234);
+        clock.add(config.step());
+        exporter.export(meterRegistry.getMeters());
+
+        ArgumentCaptor<String> stringArgumentCaptor = ArgumentCaptor.forClass(String.class);
+        verify(builder).withPlainText(stringArgumentCaptor.capture());
+        List<String> lines = Arrays.asList(stringArgumentCaptor.getValue().split("\n"));
+
+        assertThat(lines).hasSize(1)
+            .containsExactly("my.count,dt.metrics.source=micrometer count,delta=5.234 " + clock.wallTime());
     }
 
     private DynatraceExporterV2 createExporter(HttpSender httpClient) {

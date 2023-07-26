@@ -133,7 +133,10 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
      */
     @Override
     public void export(List<Meter> meters) {
-        Map<String, String> seenMetadata = new HashMap<>();
+        Map<String, String> seenMetadata = null;
+        if (config.exportMetadata()) {
+            seenMetadata = new HashMap<>();
+        }
 
         int partitionSize = Math.min(config.batchSize(), DynatraceMetricApiConstants.getPayloadLinesLimit());
         List<String> batch = new ArrayList<>(partitionSize);
@@ -153,17 +156,21 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
             });
         }
 
-        seenMetadata.values().forEach(line -> {
-            if (line == null) {
-                return;
-            }
+        // if the config to export metadata is turned off, the seenMetadata map will be
+        // null.
+        if (seenMetadata != null) {
+            seenMetadata.values().forEach(line -> {
+                if (line == null) {
+                    return;
+                }
 
-            batch.add(line);
-            if (batch.size() == partitionSize) {
-                send(batch);
-                batch.clear();
-            }
-        });
+                batch.add(line);
+                if (batch.size() == partitionSize) {
+                    send(batch);
+                    batch.clear();
+                }
+            });
+        }
 
         if (!batch.isEmpty()) {
             send(batch);
@@ -217,6 +224,12 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
     private void storeMetadataLine(Metric.Builder metricBuilder, Map<String, String> seenMetadata)
             throws MetricException {
+        // if the config to export metadata is turned off, the seenMetadata map will be
+        // null.
+        if (seenMetadata == null) {
+            return;
+        }
+
         String key = metricBuilder.getNormalizedMetricKey();
 
         if (!seenMetadata.containsKey(key)) {
