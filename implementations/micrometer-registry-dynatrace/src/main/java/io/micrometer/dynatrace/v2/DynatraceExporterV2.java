@@ -244,8 +244,8 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
             }
             // else:
             // the key exists, but the value is null, so a conflicting state has been
-            // identified before.
-            // ignore any other metadata for this key.
+            // identified before. we will ignore any other metadata for this key, so there
+            // is nothing to do here.
         }
     }
 
