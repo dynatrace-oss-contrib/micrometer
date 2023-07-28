@@ -134,7 +134,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     @Override
     public void export(List<Meter> meters) {
         Map<String, String> seenMetadata = null;
-        if (config.exportMetadata()) {
+        if (config.exportMeterMetadata()) {
             seenMetadata = new HashMap<>();
         }
 
@@ -148,11 +148,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
             Stream<String> metricLines = toMetricLines(meter, seenMetadata);
 
             metricLines.forEach(line -> {
-                batch.add(line);
-                if (batch.size() == partitionSize) {
-                    send(batch);
-                    batch.clear();
-                }
+                addLineToBatchAndSendWhenBatchIsFull(line, batch, partitionSize);
             });
         }
 
@@ -160,20 +156,23 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         // null.
         if (seenMetadata != null) {
             seenMetadata.values().forEach(line -> {
-                if (line == null) {
-                    return;
-                }
-
-                batch.add(line);
-                if (batch.size() == partitionSize) {
-                    send(batch);
-                    batch.clear();
+                if (line != null) {
+                    addLineToBatchAndSendWhenBatchIsFull(line, batch, partitionSize);
                 }
             });
         }
 
+        // push remaining lines if any.
         if (!batch.isEmpty()) {
             send(batch);
+        }
+    }
+
+    private void addLineToBatchAndSendWhenBatchIsFull(String line, List<String> batch, int partitionSize) {
+        batch.add(line);
+        if (batch.size() == partitionSize) {
+            send(batch);
+            batch.clear();
         }
     }
 
@@ -363,7 +362,6 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
     Stream<String> toFunctionCounterLine(FunctionCounter meter, Map<String, String> seenMetadata) {
         return toMeterLine(meter, (theMeter, measurement) -> createCounterLine(theMeter, seenMetadata, measurement));
-        // return toMeterLine(meter, this::createCounterLine);
     }
 
     Stream<String> toFunctionTimerLine(FunctionTimer meter, Map<String, String> seenMetadata) {

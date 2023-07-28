@@ -154,7 +154,7 @@ public interface DynatraceConfig extends StepRegistryConfig {
      * @return true if metadata should be exported, false otherwise.
      * @since 1.12.0
      */
-    default boolean exportMetadata() {
+    default boolean exportMeterMetadata() {
         if (apiVersion() == V1) {
             return false;
         }

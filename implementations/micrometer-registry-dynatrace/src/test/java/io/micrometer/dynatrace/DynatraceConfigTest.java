@@ -175,7 +175,7 @@ class DynatraceConfigTest {
         assertThat(config.metricKeyPrefix()).isEmpty();
         assertThat(config.defaultDimensions()).isEmpty();
         assertThat(config.enrichWithDynatraceMetadata()).isTrue();
-        assertThat(config.exportMetadata()).isTrue();
+        assertThat(config.exportMeterMetadata()).isTrue();
 
         Validated<?> validated = config.validate();
         assertThat(validated.isValid()).isTrue();
@@ -197,7 +197,7 @@ class DynatraceConfigTest {
         assertThat(config.metricKeyPrefix()).isEmpty();
         assertThat(config.defaultDimensions()).isEmpty();
         assertThat(config.enrichWithDynatraceMetadata()).isFalse();
-        assertThat(config.exportMetadata()).isFalse();
+        assertThat(config.exportMeterMetadata()).isFalse();
 
         Validated<?> validated = config.validate();
         assertThat(validated.isValid()).isTrue();

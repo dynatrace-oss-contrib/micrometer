@@ -816,7 +816,7 @@ class DynatraceExporterV2Test {
             }
 
             @Override
-            public boolean exportMetadata() {
+            public boolean exportMeterMetadata() {
                 return false;
             }
         };
