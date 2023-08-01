@@ -148,7 +148,8 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
             Stream<String> metricLines = toMetricLines(meter, seenMetadata);
 
             metricLines.forEach(line -> {
-                addLineToBatchAndSendWhenBatchIsFull(line, batch, partitionSize);
+                batch.add(line);
+                trySendBatch(batch, partitionSize);
             });
         }
 
@@ -157,7 +158,8 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         if (seenMetadata != null) {
             seenMetadata.values().forEach(line -> {
                 if (line != null) {
-                    addLineToBatchAndSendWhenBatchIsFull(line, batch, partitionSize);
+                    batch.add(line);
+                    trySendBatch(batch, partitionSize);
                 }
             });
         }
@@ -168,8 +170,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         }
     }
 
-    private void addLineToBatchAndSendWhenBatchIsFull(String line, List<String> batch, int partitionSize) {
-        batch.add(line);
+    private void trySendBatch(List<String> batch, int partitionSize) {
         if (batch.size() == partitionSize) {
             send(batch);
             batch.clear();
