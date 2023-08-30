@@ -55,46 +55,58 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
     private static final Pattern EXTRACT_LINES_OK = Pattern.compile("\"linesOk\":\\s?(\\d+)");
 
-    private static final Pattern EXTRACT_LINES_INVALID = Pattern.compile("\"linesInvalid\":\\s?(\\d+)");
+    private static final Pattern EXTRACT_LINES_INVALID =
+Pattern.compile("\"linesInvalid\":\\s?(\\d+)");
 
     private static final Pattern IS_NULL_ERROR_RESPONSE = Pattern.compile("\"error\":\\s?null");
 
-    private static final WarnThenDebugLogger stackTraceWarnThenDebugLogger = new WarnThenDebugLogger(
-            DynatraceExporterV2.class);
+    private static final int MINIMUM_CAPACITY = 50;
 
-    private static final WarnThenDebugLogger nanGaugeWarnThenDebugLogger = new WarnThenDebugLogger(
-            DynatraceExporterV2.class);
+    private static final WarnThenDebugLogger stackTraceWarnThenDebugLogger =
+        new WarnThenDebugLogger(DynatraceExporterV2.class);
 
-    private static final Map<String, String> staticDimensions = Collections.singletonMap("dt.metrics.source",
-            "micrometer");
+    private static final WarnThenDebugLogger nanGaugeWarnThenDebugLogger =
+        new WarnThenDebugLogger(DynatraceExporterV2.class);
+
+    private static final Map<String, String> staticDimensions =
+        Collections.singletonMap("dt.metrics.source", "micrometer");
 
     // This should be non-static for MockLoggerFactory.injectLogger() in tests.
-    private final InternalLogger logger = InternalLoggerFactory.getInstance(DynatraceExporterV2.class);
+    private final InternalLogger logger =
+        InternalLoggerFactory.getInstance(DynatraceExporterV2.class);
 
-    private final MetricBuilderFactory metricBuilderFactory;
+    private MetricLinePreConfiguration preConfiguration;
+
+    private boolean skipExport = false;
 
     public DynatraceExporterV2(DynatraceConfig config, Clock clock, HttpSender httpClient) {
         super(config, clock, httpClient);
 
         logger.info("Exporting to endpoint {}", config.uri());
 
-        MetricBuilderFactory.MetricBuilderFactoryBuilder factoryBuilder = MetricBuilderFactory.builder()
-            .withPrefix(config.metricKeyPrefix())
-            .withDefaultDimensions(parseDefaultDimensions(config.defaultDimensions()));
+        try {
+            MetricLinePreConfiguration.MetricLinePreConfigurationBuilder preConfigBuilder =
+                MetricLinePreConfiguration
+                    .builder()
+                    .prefix(config.metricKeyPrefix())
+                    .defaultDimensions(enrichWithMetricsSourceDimension(config.defaultDimensions()));
 
-        if (config.enrichWithDynatraceMetadata()) {
-            factoryBuilder.withDynatraceMetadata();
+            if (config.enrichWithDynatraceMetadata()) {
+                preConfigBuilder.dynatraceMetadataDimensions();
+            }
+
+            preConfiguration = preConfigBuilder.build();
+        } catch (MetricException e) {
+            logger.error(e.getMessage());
+            skipExport = true;
         }
-
-        metricBuilderFactory = factoryBuilder.build();
     }
 
     private boolean isValidEndpoint(String uri) {
         try {
             // noinspection ResultOfMethodCallIgnored
             URI.create(uri).toURL();
-        }
-        catch (IllegalArgumentException | MalformedURLException ex) {
+        } catch (IllegalArgumentException | MalformedURLException ex) {
             return false;
         }
 
@@ -106,39 +118,44 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
             return true;
         }
         if (config.uri().equals(DynatraceMetricApiConstants.getDefaultOneAgentEndpoint())) {
-            logger
-                .warn("Potential misconfiguration detected: Token is provided, but the endpoint is set to the local OneAgent endpoint, "
-                        + "thus the token will be ignored. If exporting to the cluster API endpoint is intended, its URI has to be provided explicitly.");
+            logger.warn(
+                "Potential misconfiguration detected: Token is provided, but the endpoint is set to the local OneAgent endpoint, "
+                    + "thus the token will be ignored. If exporting to the cluster API endpoint is intended, its URI has to be provided explicitly.");
             return true;
         }
         return false;
     }
 
-    private DimensionList parseDefaultDimensions(Map<String, String> defaultDimensions) {
-        List<Dimension> dimensions = Stream
-            .concat(defaultDimensions.entrySet().stream(), staticDimensions.entrySet().stream())
-            .map(entry -> Dimension.create(entry.getKey(), entry.getValue()))
-            .collect(Collectors.toList());
-        return DimensionList.fromCollection(dimensions);
+    private Map<String, String> enrichWithMetricsSourceDimension(
+        Map<String, String> defaultDimensions) {
+        LinkedHashMap<String, String> orderDimensions = new LinkedHashMap<>(defaultDimensions);
+        staticDimensions.entrySet().forEach(e -> orderDimensions.put(e.getKey(), e.getValue()));
+
+        return orderDimensions;
     }
 
     /**
-     * Export to the Dynatrace v2 endpoint. Measurements that contain NaN or Infinite
-     * values, as well as serialized data points that exceed length limits imposed by the
-     * API will be dropped and not exported. If the number of serialized data points
-     * exceeds the maximum number of allowed data points per request they will be sent in
-     * chunks.
-     * @param meters A list of {@link Meter Meters} that are serialized as one or more
-     * metric lines.
+     * Export to the Dynatrace v2 endpoint. Measurements that contain NaN or Infinite values, as well
+     * as serialized data points that exceed length limits imposed by the API will be dropped and not
+     * exported. If the number of serialized data points exceeds the maximum number of allowed data
+     * points per request they will be sent in chunks.
+     *
+     * @param meters A list of {@link Meter Meters} that are serialized as one or more metric lines.
      */
     @Override
     public void export(List<Meter> meters) {
+        if(skipExport) {
+            logger.warn("Invalid exporter does not export meter data.");
+            return;
+        }
+
         Map<String, String> seenMetadata = null;
         if (config.exportMeterMetadata()) {
             seenMetadata = new HashMap<>();
         }
 
-        int partitionSize = Math.min(config.batchSize(), DynatraceMetricApiConstants.getPayloadLinesLimit());
+        int partitionSize =
+            Math.min(config.batchSize(), DynatraceMetricApiConstants.getPayloadLinesLimit());
         List<String> batch = new ArrayList<>(partitionSize);
 
         for (Meter meter : meters) {
@@ -147,21 +164,25 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
             // and are therefore dropped.
             Stream<String> metricLines = toMetricLines(meter, seenMetadata);
 
-            metricLines.forEach(line -> {
-                batch.add(line);
-                sendBatchIfFull(batch, partitionSize);
-            });
+            metricLines.forEach(
+                line -> {
+                    batch.add(line);
+                    sendBatchIfFull(batch, partitionSize);
+                });
         }
 
         // if the config to export metadata is turned off, the seenMetadata map will be
         // null.
         if (seenMetadata != null) {
-            seenMetadata.values().forEach(line -> {
-                if (line != null) {
-                    batch.add(line);
-                    sendBatchIfFull(batch, partitionSize);
-                }
-            });
+            seenMetadata
+                .values()
+                .forEach(
+                    line -> {
+                        if (line != null) {
+                            batch.add(line);
+                            sendBatchIfFull(batch, partitionSize);
+                        }
+                    });
         }
 
         // push remaining lines if any.
@@ -178,18 +199,25 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     }
 
     private Stream<String> toMetricLines(Meter meter, Map<String, String> seenMetadata) {
-        return meter.match(m -> toGaugeLine(m, seenMetadata), m -> toCounterLine(m, seenMetadata),
-                m -> toTimerLine(m, seenMetadata), m -> toDistributionSummaryLine(m, seenMetadata),
-                m -> toLongTaskTimerLine(m, seenMetadata), m -> toTimeGaugeLine(m, seenMetadata),
-                m -> toFunctionCounterLine(m, seenMetadata), m -> toFunctionTimerLine(m, seenMetadata),
-                m -> toGaugeLine(m, seenMetadata));
+        return meter.match(
+            m -> toGaugeLine(m, seenMetadata),
+            m -> toCounterLine(m, seenMetadata),
+            m -> toTimerLine(m, seenMetadata),
+            m -> toDistributionSummaryLine(m, seenMetadata),
+            m -> toLongTaskTimerLine(m, seenMetadata),
+            m -> toTimeGaugeLine(m, seenMetadata),
+            m -> toFunctionCounterLine(m, seenMetadata),
+            m -> toFunctionTimerLine(m, seenMetadata),
+            m -> toGaugeLine(m, seenMetadata));
     }
 
     Stream<String> toGaugeLine(Meter meter, Map<String, String> seenMetadata) {
-        return toMeterLine(meter, (theMeter, measurement) -> createGaugeLine(theMeter, seenMetadata, measurement));
+        return toMeterLine(
+            meter, (theMeter, measurement) -> createGaugeLine(theMeter, seenMetadata, measurement));
     }
 
-    private String createGaugeLine(Meter meter, Map<String, String> seenMetadata, Measurement measurement) {
+    private String createGaugeLine(
+        Meter meter, Map<String, String> seenMetadata, Measurement measurement) {
         try {
             double value = measurement.getValue();
             if (Double.isNaN(value)) {
@@ -204,18 +232,19 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
                 // NaN's are currently dropped on the Dynatrace side, so dropping them
                 // on the client side here will not change the metrics in Dynatrace.
 
-                nanGaugeWarnThenDebugLogger.log(() -> String.format(
-                        "Meter '%s' returned a value of NaN, which will not be exported. This can be a deliberate value or because the weak reference to the backing object expired.",
-                        meter.getId().getName()));
+                nanGaugeWarnThenDebugLogger.log(
+                    () ->
+                        String.format(
+                            "Meter '%s' returned a value of NaN, which will not be exported. This can be a deliberate value or because the weak reference to the backing object expired.",
+                            meter.getId().getName()));
                 return null;
             }
-            Metric.Builder metricBuilder = createMetricBuilder(meter).setDoubleGaugeValue(value);
+            MetricLineBuilder.GaugeStep metricBuilder = createMetricBuilder(meter).gauge();
 
-            storeMetadataLine(metricBuilder, seenMetadata);
+            storeMetadataLine(createMetadataBuilder(metricBuilder, meter), seenMetadata);
 
-            return metricBuilder.serializeMetricLine();
-        }
-        catch (MetricException e) {
+            return metricBuilder.value(value).timestamp(Instant.ofEpochMilli(clock.wallTime())).build();
+        } catch (MetricException e) {
             logger.warn(METER_EXCEPTION_LOG_FORMAT, meter.getId(), e.getMessage());
         }
 
@@ -223,20 +252,24 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     }
 
     Stream<String> toCounterLine(Counter counter, Map<String, String> seenMetadata) {
-        return toMeterLine(counter,
-                (Meter meter, Measurement measurement) -> this.createCounterLine(meter, seenMetadata, measurement));
+        return toMeterLine(
+            counter,
+            (Meter meter, Measurement measurement) ->
+                this.createCounterLine(meter, seenMetadata, measurement));
     }
 
-    private String createCounterLine(Meter meter, Map<String, String> seenMetadata, Measurement measurement) {
+    private String createCounterLine(
+        Meter meter, Map<String, String> seenMetadata, Measurement measurement) {
         try {
-            Metric.Builder metricBuilder = createMetricBuilder(meter)
-                .setDoubleCounterValueDelta(measurement.getValue());
+            MetricLineBuilder.CounterStep metricBuilder = createMetricBuilder(meter).count();
 
-            storeMetadataLine(metricBuilder, seenMetadata);
+            storeMetadataLine(createMetadataBuilder(metricBuilder, meter), seenMetadata);
 
-            return metricBuilder.serializeMetricLine();
-        }
-        catch (MetricException e) {
+            return metricBuilder
+                .delta(measurement.getValue())
+                .timestamp(Instant.ofEpochMilli(clock.wallTime()))
+                .build();
+        } catch (MetricException e) {
             logger.warn(METER_EXCEPTION_LOG_FORMAT, meter.getId(), e.getMessage());
         }
 
@@ -248,25 +281,34 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
             return toSummaryLine(meter, seenMetadata, meter.takeSnapshot(), getBaseTimeUnit());
         }
 
-        DynatraceSummarySnapshot snapshot = ((DynatraceSummarySnapshotSupport) meter)
-            .takeSummarySnapshotAndReset(getBaseTimeUnit());
+        DynatraceSummarySnapshot snapshot =
+            ((DynatraceSummarySnapshotSupport) meter).takeSummarySnapshotAndReset(getBaseTimeUnit());
 
         if (snapshot.getCount() == 0) {
             return Stream.empty();
         }
 
-        return createSummaryLine(meter, seenMetadata, snapshot.getMin(), snapshot.getMax(), snapshot.getTotal(),
-                snapshot.getCount());
+        return createSummaryLine(
+            meter,
+            seenMetadata,
+            snapshot.getMin(),
+            snapshot.getMax(),
+            snapshot.getTotal(),
+            snapshot.getCount());
     }
 
-    private Stream<String> toSummaryLine(Meter meter, Map<String, String> seenMetadata,
-            HistogramSnapshot histogramSnapshot, TimeUnit timeUnit) {
+    private Stream<String> toSummaryLine(
+        Meter meter,
+        Map<String, String> seenMetadata,
+        HistogramSnapshot histogramSnapshot,
+        TimeUnit timeUnit) {
         long count = histogramSnapshot.count();
         if (count < 1) {
             logger.debug("Summary with 0 count dropped: {}", meter.getId().getName());
             return Stream.empty();
         }
-        double total = (timeUnit != null) ? histogramSnapshot.total(timeUnit) : histogramSnapshot.total();
+        double total =
+            (timeUnit != null) ? histogramSnapshot.total(timeUnit) : histogramSnapshot.total();
         double max = (timeUnit != null) ? histogramSnapshot.max(timeUnit) : histogramSnapshot.max();
         double min = (count == 1) ? max : minFromHistogramSnapshot(histogramSnapshot, timeUnit);
         return createSummaryLine(meter, seenMetadata, min, max, total, count);
@@ -282,35 +324,50 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         return Double.NaN;
     }
 
-    private Stream<String> createSummaryLine(Meter meter, Map<String, String> seenMetadata, double min, double max,
-            double total, long count) {
+    private Stream<String> createSummaryLine(
+        Meter meter,
+        Map<String, String> seenMetadata,
+        double min,
+        double max,
+        double total,
+        long count) {
         try {
-            Metric.Builder builder = createMetricBuilder(meter).setDoubleSummaryValue(min, max, total, count);
+            MetricLineBuilder.GaugeStep metricBuilder = createMetricBuilder(meter).gauge();
 
-            storeMetadataLine(builder, seenMetadata);
+            storeMetadataLine(createMetadataBuilder(metricBuilder, meter), seenMetadata);
 
-            return Stream.of(builder.serializeMetricLine());
-        }
-        catch (MetricException e) {
+            return Stream.of(
+                metricBuilder
+                    .statCounter(min, max, total, count)
+                    .timestamp(Instant.ofEpochMilli(clock.wallTime()))
+                    .build());
+        } catch (MetricException e) {
             logger.warn(METER_EXCEPTION_LOG_FORMAT, meter.getId(), e.getMessage());
         }
 
         return Stream.empty();
     }
 
-    Stream<String> toDistributionSummaryLine(DistributionSummary meter, Map<String, String> seenMetadata) {
+    Stream<String> toDistributionSummaryLine(
+        DistributionSummary meter, Map<String, String> seenMetadata) {
         if (!(meter instanceof DynatraceSummarySnapshotSupport)) {
             return toSummaryLine(meter, seenMetadata, meter.takeSnapshot(), null);
         }
 
-        DynatraceSummarySnapshot snapshot = ((DynatraceSummarySnapshotSupport) meter).takeSummarySnapshotAndReset();
+        DynatraceSummarySnapshot snapshot =
+            ((DynatraceSummarySnapshotSupport) meter).takeSummarySnapshotAndReset();
 
         if (snapshot.getCount() == 0) {
             return Stream.empty();
         }
 
-        return createSummaryLine(meter, seenMetadata, snapshot.getMin(), snapshot.getMax(), snapshot.getTotal(),
-                snapshot.getCount());
+        return createSummaryLine(
+            meter,
+            seenMetadata,
+            snapshot.getMin(),
+            snapshot.getMax(),
+            snapshot.getTotal(),
+            snapshot.getCount());
     }
 
     Stream<String> toLongTaskTimerLine(LongTaskTimer meter, Map<String, String> seenMetadata) {
@@ -318,11 +375,13 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     }
 
     Stream<String> toTimeGaugeLine(TimeGauge meter, Map<String, String> seenMetadata) {
-        return toMeterLine(meter, (theMeter, measurement) -> createGaugeLine(theMeter, seenMetadata, measurement));
+        return toMeterLine(
+            meter, (theMeter, measurement) -> createGaugeLine(theMeter, seenMetadata, measurement));
     }
 
     Stream<String> toFunctionCounterLine(FunctionCounter meter, Map<String, String> seenMetadata) {
-        return toMeterLine(meter, (theMeter, measurement) -> createCounterLine(theMeter, seenMetadata, measurement));
+        return toMeterLine(
+            meter, (theMeter, measurement) -> createCounterLine(theMeter, seenMetadata, measurement));
     }
 
     Stream<String> toFunctionTimerLine(FunctionTimer meter, Map<String, String> seenMetadata) {
@@ -338,25 +397,25 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     }
 
     Stream<String> toMeterLine(Meter meter, Map<String, String> seenMetadata) {
-        return toMeterLine(meter, (theMeter, measurement) -> createGaugeLine(theMeter, seenMetadata, measurement));
+        return toMeterLine(
+            meter, (theMeter, measurement) -> createGaugeLine(theMeter, seenMetadata, measurement));
     }
 
-    private Stream<String> toMeterLine(Meter meter, BiFunction<Meter, Measurement, String> measurementConverter) {
-        return streamOf(meter.measure()).map(measurement -> measurementConverter.apply(meter, measurement))
+    private Stream<String> toMeterLine(
+        Meter meter, BiFunction<Meter, Measurement, String> measurementConverter) {
+        return streamOf(meter.measure())
+            .map(measurement -> measurementConverter.apply(meter, measurement))
             .filter(Objects::nonNull);
     }
 
-    private Metric.Builder createMetricBuilder(Meter meter) {
-        return metricBuilderFactory.newMetricBuilder(meter.getId().getName())
-            .setDimensions(fromTags(meter.getId().getTags()))
-            .setTimestamp(Instant.ofEpochMilli(clock.wallTime()))
-            .setUnit(meter.getId().getBaseUnit())
-            .setDescription(meter.getId().getDescription());
+    private MetricLineBuilder.TypeStep createMetricBuilder(Meter meter) throws MetricException {
+        return MetricLineBuilder.create(preConfiguration)
+            .metricKey(meter.getId().getName())
+            .dimensions(fromTags(meter.getId().getTags()));
     }
 
-    private DimensionList fromTags(List<Tag> tags) {
-        return DimensionList.fromCollection(
-                tags.stream().map(tag -> Dimension.create(tag.getKey(), tag.getValue())).collect(Collectors.toList()));
+    private Map<String, String> fromTags(List<Tag> tags) {
+        return tags.stream().collect(Collectors.toMap(Tag::getKey, Tag::getValue));
     }
 
     private <T> Stream<T> streamOf(Iterable<T> iterable) {
@@ -381,17 +440,21 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
                 requestBuilder.withHeader("Authorization", "Api-Token " + config.apiToken());
             }
 
-            requestBuilder.withHeader("User-Agent", "micrometer")
+            requestBuilder
+                .withHeader("User-Agent", "micrometer")
                 .withPlainText(body)
                 .send()
                 .onSuccess(response -> handleSuccess(lineCount, response))
-                .onError(response -> logger.error("Failed metric ingestion: Error Code={}, Response Body={}",
-                        response.code(), getTruncatedBody(response)));
-        }
-        catch (Throwable throwable) {
+                .onError(
+                    response ->
+                        logger.error(
+                            "Failed metric ingestion: Error Code={}, Response Body={}",
+                            response.code(),
+                            getTruncatedBody(response)));
+        } catch (Throwable throwable) {
             logger.warn("Failed metric ingestion: " + throwable);
-            stackTraceWarnThenDebugLogger.log("Stack trace for previous 'Failed metric ingestion' warning log: ",
-                    throwable);
+            stackTraceWarnThenDebugLogger.log(
+                "Stack trace for previous 'Failed metric ingestion' warning log: ", throwable);
         }
     }
 
@@ -405,56 +468,76 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
                 Matcher linesOkMatchResult = EXTRACT_LINES_OK.matcher(response.body());
                 Matcher linesInvalidMatchResult = EXTRACT_LINES_INVALID.matcher(response.body());
                 if (linesOkMatchResult.find() && linesInvalidMatchResult.find()) {
-                    logger.debug("Sent {} metric lines, linesOk: {}, linesInvalid: {}.", totalSent,
-                            linesOkMatchResult.group(1), linesInvalidMatchResult.group(1));
-                }
-                else {
+                    logger.debug(
+                        "Sent {} metric lines, linesOk: {}, linesInvalid: {}.",
+                        totalSent,
+                        linesOkMatchResult.group(1),
+                        linesInvalidMatchResult.group(1));
+                } else {
                     logger.warn("Unable to parse response: {}", getTruncatedBody(response));
                 }
-            }
-            else {
+            } else {
                 logger.warn("Unable to parse response: {}", getTruncatedBody(response));
             }
-        }
-        else {
+        } else {
             // common pitfall if URI is supplied in V1 format (without endpoint path)
             logger.error(
-                    "Expected status code 202, got {}.\nResponse Body={}\nDid you specify the ingest path (e.g.: /api/v2/metrics/ingest)?",
-                    response.code(), getTruncatedBody(response));
+                "Expected status code 202, got {}.\nResponse Body={}\nDid you specify the ingest path (e.g.: /api/v2/metrics/ingest)?",
+                response.code(),
+                getTruncatedBody(response));
         }
     }
 
-    private void storeMetadataLine(Metric.Builder metricBuilder, Map<String, String> seenMetadata)
-            throws MetricException {
+    private MetricLineBuilder.MetadataStep createMetadataBuilder(
+        MetricLineBuilder.GaugeStep metricBuilder, Meter meter) {
+        return enrichMetadataBuilder(metricBuilder.metadata(), meter);
+    }
+
+    private MetricLineBuilder.MetadataStep createMetadataBuilder(
+        MetricLineBuilder.CounterStep metricBuilder, Meter meter) {
+        return enrichMetadataBuilder(metricBuilder.metadata(), meter);
+    }
+
+    private MetricLineBuilder.MetadataStep enrichMetadataBuilder(
+        MetricLineBuilder.MetadataStep metadataBuilder, Meter meter) {
+        return metadataBuilder
+            .description(meter.getId().getDescription())
+            .unit(meter.getId().getBaseUnit());
+    }
+
+    private void storeMetadataLine(MetricLineBuilder.MetadataStep metadataBuilder, Map<String, String> seenMetadata)
+        throws MetricException {
         // if the config to export metadata is turned off, the seenMetadata map will be
         // null.
         if (seenMetadata == null) {
             return;
         }
 
-        String key = metricBuilder.getNormalizedMetricKey();
+        String metadataLine = metadataBuilder.build();
+        if (metadataBuilder == null) {
+            return;
+        }
 
+        String key = extractMetricKey(metadataLine);
         if (!seenMetadata.containsKey(key)) {
             // if there is no metadata associated with the key, add it.
-            seenMetadata.put(key, metricBuilder.serializeMetadataLine());
-        }
-        else {
+            seenMetadata.put(key, metadataLine);
+        } else {
             // get the previously stored metadata line
             String previousMetadataLine = seenMetadata.get(key);
             // if the previous line is not null, a metadata object had already been set in
             // the past and no conflicting metadata lines had been added thereafter.
             if (previousMetadataLine != null) {
-                String newMetadataLine = metricBuilder.serializeMetadataLine();
                 // if the new metadata line conflicts with the old one, we don't know
                 // which one is the correct metadata and will not export any.
                 // the map entry is set to null to ensure other metadata lines cannot be
                 // set for this metric key.
-                if (!previousMetadataLine.equals(newMetadataLine)) {
+                if (!previousMetadataLine.equals(metadataLine)) {
                     seenMetadata.put(key, null);
                     logger.warn(
                             "Metadata discrepancy detected:\n" + "original metadata:\t{}\n" + "tried to set new:\t{}\n"
                                     + "Metadata for metric key {} will not be sent.",
-                            previousMetadataLine, newMetadataLine, key);
+                            previousMetadataLine, metadataLine, key);
                 }
             }
             // else:
@@ -464,4 +547,22 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         }
     }
 
+    private String extractMetricKey(String metadataLine) {
+        if (metadataLine == null) {
+            return null;
+        }
+
+        StringBuilder metricKey = new StringBuilder(MINIMUM_CAPACITY);
+
+        for (int i = 1; i < metadataLine.length(); i++) {
+            char c = metadataLine.charAt(i);
+            if (c == ' ' || c == ',') {
+                break;
+            }
+
+            metricKey.append(c);
+        }
+
+        return metricKey.toString();
+    }
 }
