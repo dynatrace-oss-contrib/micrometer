@@ -55,25 +55,22 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
     private static final Pattern EXTRACT_LINES_OK = Pattern.compile("\"linesOk\":\\s?(\\d+)");
 
-    private static final Pattern EXTRACT_LINES_INVALID =
-Pattern.compile("\"linesInvalid\":\\s?(\\d+)");
+    private static final Pattern EXTRACT_LINES_INVALID = Pattern.compile("\"linesInvalid\":\\s?(\\d+)");
 
     private static final Pattern IS_NULL_ERROR_RESPONSE = Pattern.compile("\"error\":\\s?null");
 
-    private static final int MINIMUM_CAPACITY = 50;
+    private static final WarnThenDebugLogger stackTraceWarnThenDebugLogger = new WarnThenDebugLogger(
+            DynatraceExporterV2.class);
 
-    private static final WarnThenDebugLogger stackTraceWarnThenDebugLogger =
-        new WarnThenDebugLogger(DynatraceExporterV2.class);
+    private static final WarnThenDebugLogger nanGaugeWarnThenDebugLogger = new WarnThenDebugLogger(
+            DynatraceExporterV2.class);
 
-    private static final WarnThenDebugLogger nanGaugeWarnThenDebugLogger =
-        new WarnThenDebugLogger(DynatraceExporterV2.class);
-
-    private static final Map<String, String> staticDimensions =
-        Collections.singletonMap("dt.metrics.source", "micrometer");
+    private static final Map<String, String> staticDimensions = Collections.singletonMap("dt.metrics.source",
+            "micrometer");
+    private static final int MINIMUM_CAPACITY = 64;
 
     // This should be non-static for MockLoggerFactory.injectLogger() in tests.
-    private final InternalLogger logger =
-        InternalLoggerFactory.getInstance(DynatraceExporterV2.class);
+    private final InternalLogger logger = InternalLoggerFactory.getInstance(DynatraceExporterV2.class);
 
     private MetricLinePreConfiguration preConfiguration;
 
@@ -85,7 +82,7 @@ Pattern.compile("\"linesInvalid\":\\s?(\\d+)");
         logger.info("Exporting to endpoint {}", config.uri());
 
         try {
-            MetricLinePreConfiguration.MetricLinePreConfigurationBuilder preConfigBuilder =
+            MetricLinePreConfiguration.Builder preConfigBuilder =
                 MetricLinePreConfiguration
                     .builder()
                     .prefix(config.metricKeyPrefix())
@@ -106,7 +103,8 @@ Pattern.compile("\"linesInvalid\":\\s?(\\d+)");
         try {
             // noinspection ResultOfMethodCallIgnored
             URI.create(uri).toURL();
-        } catch (IllegalArgumentException | MalformedURLException ex) {
+        }
+        catch (IllegalArgumentException | MalformedURLException ex) {
             return false;
         }
 
@@ -118,9 +116,9 @@ Pattern.compile("\"linesInvalid\":\\s?(\\d+)");
             return true;
         }
         if (config.uri().equals(DynatraceMetricApiConstants.getDefaultOneAgentEndpoint())) {
-            logger.warn(
-                "Potential misconfiguration detected: Token is provided, but the endpoint is set to the local OneAgent endpoint, "
-                    + "thus the token will be ignored. If exporting to the cluster API endpoint is intended, its URI has to be provided explicitly.");
+            logger
+                .warn("Potential misconfiguration detected: Token is provided, but the endpoint is set to the local OneAgent endpoint, "
+                        + "thus the token will be ignored. If exporting to the cluster API endpoint is intended, its URI has to be provided explicitly.");
             return true;
         }
         return false;
@@ -135,12 +133,13 @@ Pattern.compile("\"linesInvalid\":\\s?(\\d+)");
     }
 
     /**
-     * Export to the Dynatrace v2 endpoint. Measurements that contain NaN or Infinite values, as well
-     * as serialized data points that exceed length limits imposed by the API will be dropped and not
-     * exported. If the number of serialized data points exceeds the maximum number of allowed data
-     * points per request they will be sent in chunks.
-     *
-     * @param meters A list of {@link Meter Meters} that are serialized as one or more metric lines.
+     * Export to the Dynatrace v2 endpoint. Measurements that contain NaN or Infinite
+     * values, as well as serialized data points that exceed length limits imposed by the
+     * API will be dropped and not exported. If the number of serialized data points
+     * exceeds the maximum number of allowed data points per request they will be sent in
+     * chunks.
+     * @param meters A list of {@link Meter Meters} that are serialized as one or more
+     * metric lines.
      */
     @Override
     public void export(List<Meter> meters) {
@@ -154,8 +153,7 @@ Pattern.compile("\"linesInvalid\":\\s?(\\d+)");
             seenMetadata = new HashMap<>();
         }
 
-        int partitionSize =
-            Math.min(config.batchSize(), DynatraceMetricApiConstants.getPayloadLinesLimit());
+        int partitionSize = Math.min(config.batchSize(), DynatraceMetricApiConstants.getPayloadLinesLimit());
         List<String> batch = new ArrayList<>(partitionSize);
 
         for (Meter meter : meters) {
@@ -164,25 +162,21 @@ Pattern.compile("\"linesInvalid\":\\s?(\\d+)");
             // and are therefore dropped.
             Stream<String> metricLines = toMetricLines(meter, seenMetadata);
 
-            metricLines.forEach(
-                line -> {
-                    batch.add(line);
-                    sendBatchIfFull(batch, partitionSize);
-                });
+            metricLines.forEach(line -> {
+                batch.add(line);
+                sendBatchIfFull(batch, partitionSize);
+            });
         }
 
         // if the config to export metadata is turned off, the seenMetadata map will be
         // null.
         if (seenMetadata != null) {
-            seenMetadata
-                .values()
-                .forEach(
-                    line -> {
-                        if (line != null) {
-                            batch.add(line);
-                            sendBatchIfFull(batch, partitionSize);
-                        }
-                    });
+            seenMetadata.values().forEach(line -> {
+                if (line != null) {
+                    batch.add(line);
+                    sendBatchIfFull(batch, partitionSize);
+                }
+            });
         }
 
         // push remaining lines if any.
@@ -199,25 +193,18 @@ Pattern.compile("\"linesInvalid\":\\s?(\\d+)");
     }
 
     private Stream<String> toMetricLines(Meter meter, Map<String, String> seenMetadata) {
-        return meter.match(
-            m -> toGaugeLine(m, seenMetadata),
-            m -> toCounterLine(m, seenMetadata),
-            m -> toTimerLine(m, seenMetadata),
-            m -> toDistributionSummaryLine(m, seenMetadata),
-            m -> toLongTaskTimerLine(m, seenMetadata),
-            m -> toTimeGaugeLine(m, seenMetadata),
-            m -> toFunctionCounterLine(m, seenMetadata),
-            m -> toFunctionTimerLine(m, seenMetadata),
-            m -> toGaugeLine(m, seenMetadata));
+        return meter.match(m -> toGaugeLine(m, seenMetadata), m -> toCounterLine(m, seenMetadata),
+                m -> toTimerLine(m, seenMetadata), m -> toDistributionSummaryLine(m, seenMetadata),
+                m -> toLongTaskTimerLine(m, seenMetadata), m -> toTimeGaugeLine(m, seenMetadata),
+                m -> toFunctionCounterLine(m, seenMetadata), m -> toFunctionTimerLine(m, seenMetadata),
+                m -> toGaugeLine(m, seenMetadata));
     }
 
     Stream<String> toGaugeLine(Meter meter, Map<String, String> seenMetadata) {
-        return toMeterLine(
-            meter, (theMeter, measurement) -> createGaugeLine(theMeter, seenMetadata, measurement));
+        return toMeterLine(meter, (theMeter, measurement) -> createGaugeLine(theMeter, seenMetadata, measurement));
     }
 
-    private String createGaugeLine(
-        Meter meter, Map<String, String> seenMetadata, Measurement measurement) {
+    private String createGaugeLine(Meter meter, Map<String, String> seenMetadata, Measurement measurement) {
         try {
             double value = measurement.getValue();
             if (Double.isNaN(value)) {
@@ -232,11 +219,9 @@ Pattern.compile("\"linesInvalid\":\\s?(\\d+)");
                 // NaN's are currently dropped on the Dynatrace side, so dropping them
                 // on the client side here will not change the metrics in Dynatrace.
 
-                nanGaugeWarnThenDebugLogger.log(
-                    () ->
-                        String.format(
-                            "Meter '%s' returned a value of NaN, which will not be exported. This can be a deliberate value or because the weak reference to the backing object expired.",
-                            meter.getId().getName()));
+                nanGaugeWarnThenDebugLogger.log(() -> String.format(
+                        "Meter '%s' returned a value of NaN, which will not be exported. This can be a deliberate value or because the weak reference to the backing object expired.",
+                        meter.getId().getName()));
                 return null;
             }
             MetricLineBuilder.GaugeStep metricBuilder = createMetricBuilder(meter).gauge();
@@ -252,23 +237,17 @@ Pattern.compile("\"linesInvalid\":\\s?(\\d+)");
     }
 
     Stream<String> toCounterLine(Counter counter, Map<String, String> seenMetadata) {
-        return toMeterLine(
-            counter,
-            (Meter meter, Measurement measurement) ->
-                this.createCounterLine(meter, seenMetadata, measurement));
+        return toMeterLine(counter,
+                (Meter meter, Measurement measurement) -> this.createCounterLine(meter, seenMetadata, measurement));
     }
 
-    private String createCounterLine(
-        Meter meter, Map<String, String> seenMetadata, Measurement measurement) {
+    private String createCounterLine(Meter meter, Map<String, String> seenMetadata, Measurement measurement) {
         try {
             MetricLineBuilder.CounterStep metricBuilder = createMetricBuilder(meter).count();
 
             storeMetadataLine(createMetadataBuilder(metricBuilder, meter), seenMetadata);
 
-            return metricBuilder
-                .delta(measurement.getValue())
-                .timestamp(Instant.ofEpochMilli(clock.wallTime()))
-                .build();
+            return metricBuilder.delta(measurement.getValue()).timestamp(Instant.ofEpochMilli(clock.wallTime())).build();
         } catch (MetricException e) {
             logger.warn(METER_EXCEPTION_LOG_FORMAT, meter.getId(), e.getMessage());
         }
@@ -281,34 +260,25 @@ Pattern.compile("\"linesInvalid\":\\s?(\\d+)");
             return toSummaryLine(meter, seenMetadata, meter.takeSnapshot(), getBaseTimeUnit());
         }
 
-        DynatraceSummarySnapshot snapshot =
-            ((DynatraceSummarySnapshotSupport) meter).takeSummarySnapshotAndReset(getBaseTimeUnit());
+        DynatraceSummarySnapshot snapshot = ((DynatraceSummarySnapshotSupport) meter)
+            .takeSummarySnapshotAndReset(getBaseTimeUnit());
 
         if (snapshot.getCount() == 0) {
             return Stream.empty();
         }
 
-        return createSummaryLine(
-            meter,
-            seenMetadata,
-            snapshot.getMin(),
-            snapshot.getMax(),
-            snapshot.getTotal(),
-            snapshot.getCount());
+        return createSummaryLine(meter, seenMetadata, snapshot.getMin(), snapshot.getMax(), snapshot.getTotal(),
+                snapshot.getCount());
     }
 
-    private Stream<String> toSummaryLine(
-        Meter meter,
-        Map<String, String> seenMetadata,
-        HistogramSnapshot histogramSnapshot,
-        TimeUnit timeUnit) {
+    private Stream<String> toSummaryLine(Meter meter, Map<String, String> seenMetadata,
+            HistogramSnapshot histogramSnapshot, TimeUnit timeUnit) {
         long count = histogramSnapshot.count();
         if (count < 1) {
             logger.debug("Summary with 0 count dropped: {}", meter.getId().getName());
             return Stream.empty();
         }
-        double total =
-            (timeUnit != null) ? histogramSnapshot.total(timeUnit) : histogramSnapshot.total();
+        double total = (timeUnit != null) ? histogramSnapshot.total(timeUnit) : histogramSnapshot.total();
         double max = (timeUnit != null) ? histogramSnapshot.max(timeUnit) : histogramSnapshot.max();
         double min = (count == 1) ? max : minFromHistogramSnapshot(histogramSnapshot, timeUnit);
         return createSummaryLine(meter, seenMetadata, min, max, total, count);
@@ -324,23 +294,14 @@ Pattern.compile("\"linesInvalid\":\\s?(\\d+)");
         return Double.NaN;
     }
 
-    private Stream<String> createSummaryLine(
-        Meter meter,
-        Map<String, String> seenMetadata,
-        double min,
-        double max,
-        double total,
-        long count) {
+    private Stream<String> createSummaryLine(Meter meter, Map<String, String> seenMetadata, double min, double max,
+            double total, long count) {
         try {
             MetricLineBuilder.GaugeStep metricBuilder = createMetricBuilder(meter).gauge();
 
             storeMetadataLine(createMetadataBuilder(metricBuilder, meter), seenMetadata);
 
-            return Stream.of(
-                metricBuilder
-                    .statCounter(min, max, total, count)
-                    .timestamp(Instant.ofEpochMilli(clock.wallTime()))
-                    .build());
+            return Stream.of(metricBuilder.summary(min, max, total, count).timestamp(Instant.ofEpochMilli(clock.wallTime())).build());
         } catch (MetricException e) {
             logger.warn(METER_EXCEPTION_LOG_FORMAT, meter.getId(), e.getMessage());
         }
@@ -348,26 +309,19 @@ Pattern.compile("\"linesInvalid\":\\s?(\\d+)");
         return Stream.empty();
     }
 
-    Stream<String> toDistributionSummaryLine(
-        DistributionSummary meter, Map<String, String> seenMetadata) {
+    Stream<String> toDistributionSummaryLine(DistributionSummary meter, Map<String, String> seenMetadata) {
         if (!(meter instanceof DynatraceSummarySnapshotSupport)) {
             return toSummaryLine(meter, seenMetadata, meter.takeSnapshot(), null);
         }
 
-        DynatraceSummarySnapshot snapshot =
-            ((DynatraceSummarySnapshotSupport) meter).takeSummarySnapshotAndReset();
+        DynatraceSummarySnapshot snapshot = ((DynatraceSummarySnapshotSupport) meter).takeSummarySnapshotAndReset();
 
         if (snapshot.getCount() == 0) {
             return Stream.empty();
         }
 
-        return createSummaryLine(
-            meter,
-            seenMetadata,
-            snapshot.getMin(),
-            snapshot.getMax(),
-            snapshot.getTotal(),
-            snapshot.getCount());
+        return createSummaryLine(meter, seenMetadata, snapshot.getMin(), snapshot.getMax(), snapshot.getTotal(),
+                snapshot.getCount());
     }
 
     Stream<String> toLongTaskTimerLine(LongTaskTimer meter, Map<String, String> seenMetadata) {
@@ -375,13 +329,11 @@ Pattern.compile("\"linesInvalid\":\\s?(\\d+)");
     }
 
     Stream<String> toTimeGaugeLine(TimeGauge meter, Map<String, String> seenMetadata) {
-        return toMeterLine(
-            meter, (theMeter, measurement) -> createGaugeLine(theMeter, seenMetadata, measurement));
+        return toMeterLine(meter, (theMeter, measurement) -> createGaugeLine(theMeter, seenMetadata, measurement));
     }
 
     Stream<String> toFunctionCounterLine(FunctionCounter meter, Map<String, String> seenMetadata) {
-        return toMeterLine(
-            meter, (theMeter, measurement) -> createCounterLine(theMeter, seenMetadata, measurement));
+        return toMeterLine(meter, (theMeter, measurement) -> createCounterLine(theMeter, seenMetadata, measurement));
     }
 
     Stream<String> toFunctionTimerLine(FunctionTimer meter, Map<String, String> seenMetadata) {
@@ -397,14 +349,11 @@ Pattern.compile("\"linesInvalid\":\\s?(\\d+)");
     }
 
     Stream<String> toMeterLine(Meter meter, Map<String, String> seenMetadata) {
-        return toMeterLine(
-            meter, (theMeter, measurement) -> createGaugeLine(theMeter, seenMetadata, measurement));
+        return toMeterLine(meter, (theMeter, measurement) -> createGaugeLine(theMeter, seenMetadata, measurement));
     }
 
-    private Stream<String> toMeterLine(
-        Meter meter, BiFunction<Meter, Measurement, String> measurementConverter) {
-        return streamOf(meter.measure())
-            .map(measurement -> measurementConverter.apply(meter, measurement))
+    private Stream<String> toMeterLine(Meter meter, BiFunction<Meter, Measurement, String> measurementConverter) {
+        return streamOf(meter.measure()).map(measurement -> measurementConverter.apply(meter, measurement))
             .filter(Objects::nonNull);
     }
 
@@ -440,21 +389,17 @@ Pattern.compile("\"linesInvalid\":\\s?(\\d+)");
                 requestBuilder.withHeader("Authorization", "Api-Token " + config.apiToken());
             }
 
-            requestBuilder
-                .withHeader("User-Agent", "micrometer")
+            requestBuilder.withHeader("User-Agent", "micrometer")
                 .withPlainText(body)
                 .send()
                 .onSuccess(response -> handleSuccess(lineCount, response))
-                .onError(
-                    response ->
-                        logger.error(
-                            "Failed metric ingestion: Error Code={}, Response Body={}",
-                            response.code(),
-                            getTruncatedBody(response)));
-        } catch (Throwable throwable) {
+                .onError(response -> logger.error("Failed metric ingestion: Error Code={}, Response Body={}",
+                        response.code(), getTruncatedBody(response)));
+        }
+        catch (Throwable throwable) {
             logger.warn("Failed metric ingestion: " + throwable);
-            stackTraceWarnThenDebugLogger.log(
-                "Stack trace for previous 'Failed metric ingestion' warning log: ", throwable);
+            stackTraceWarnThenDebugLogger.log("Stack trace for previous 'Failed metric ingestion' warning log: ",
+                    throwable);
         }
     }
 
@@ -468,23 +413,22 @@ Pattern.compile("\"linesInvalid\":\\s?(\\d+)");
                 Matcher linesOkMatchResult = EXTRACT_LINES_OK.matcher(response.body());
                 Matcher linesInvalidMatchResult = EXTRACT_LINES_INVALID.matcher(response.body());
                 if (linesOkMatchResult.find() && linesInvalidMatchResult.find()) {
-                    logger.debug(
-                        "Sent {} metric lines, linesOk: {}, linesInvalid: {}.",
-                        totalSent,
-                        linesOkMatchResult.group(1),
-                        linesInvalidMatchResult.group(1));
-                } else {
+                    logger.debug("Sent {} metric lines, linesOk: {}, linesInvalid: {}.", totalSent,
+                            linesOkMatchResult.group(1), linesInvalidMatchResult.group(1));
+                }
+                else {
                     logger.warn("Unable to parse response: {}", getTruncatedBody(response));
                 }
-            } else {
+            }
+            else {
                 logger.warn("Unable to parse response: {}", getTruncatedBody(response));
             }
-        } else {
+        }
+        else {
             // common pitfall if URI is supplied in V1 format (without endpoint path)
             logger.error(
-                "Expected status code 202, got {}.\nResponse Body={}\nDid you specify the ingest path (e.g.: /api/v2/metrics/ingest)?",
-                response.code(),
-                getTruncatedBody(response));
+                    "Expected status code 202, got {}.\nResponse Body={}\nDid you specify the ingest path (e.g.: /api/v2/metrics/ingest)?",
+                    response.code(), getTruncatedBody(response));
         }
     }
 
