@@ -38,7 +38,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -67,6 +66,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
     private static final Map<String, String> staticDimensions = Collections.singletonMap("dt.metrics.source",
             "micrometer");
+
     private static final int MINIMUM_CAPACITY = 64;
 
     // This should be non-static for MockLoggerFactory.injectLogger() in tests.
@@ -82,18 +82,20 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         logger.info("Exporting to endpoint {}", config.uri());
 
         try {
-            MetricLinePreConfiguration.Builder preConfigBuilder =
-                MetricLinePreConfiguration
-                    .builder()
-                    .prefix(config.metricKeyPrefix())
-                    .defaultDimensions(enrichWithMetricsSourceDimension(config.defaultDimensions()));
+            MetricLinePreConfiguration.Builder preConfigBuilder = MetricLinePreConfiguration.builder()
+                .prefix(config.metricKeyPrefix())
+                .defaultDimensions(enrichWithMetricsSourceDimension(config.defaultDimensions()));
 
             if (config.enrichWithDynatraceMetadata()) {
                 preConfigBuilder.dynatraceMetadataDimensions();
             }
 
             preConfiguration = preConfigBuilder.build();
-        } catch (MetricException e) {
+        }
+        catch (MetricException e) {
+            // if the preconfiguration is invalid, all created metric lines would be
+            // invalid, and exporting any line becomes useless. Therefore, we log an
+            // error, and don't export at all.
             logger.error(e.getMessage());
             skipExport = true;
         }
@@ -124,11 +126,9 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         return false;
     }
 
-    private Map<String, String> enrichWithMetricsSourceDimension(
-        Map<String, String> defaultDimensions) {
+    private Map<String, String> enrichWithMetricsSourceDimension(Map<String, String> defaultDimensions) {
         LinkedHashMap<String, String> orderDimensions = new LinkedHashMap<>(defaultDimensions);
-        staticDimensions.entrySet().forEach(e -> orderDimensions.put(e.getKey(), e.getValue()));
-
+        orderDimensions.putAll(staticDimensions);
         return orderDimensions;
     }
 
@@ -143,8 +143,8 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
      */
     @Override
     public void export(List<Meter> meters) {
-        if(skipExport) {
-            logger.warn("Invalid exporter does not export meter data.");
+        if (skipExport) {
+            logger.warn("Dynatrace configuration is invalid, skipping export.");
             return;
         }
 
@@ -229,7 +229,8 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
             storeMetadataLine(createMetadataBuilder(metricBuilder, meter), seenMetadata);
 
             return metricBuilder.value(value).timestamp(Instant.ofEpochMilli(clock.wallTime())).build();
-        } catch (MetricException e) {
+        }
+        catch (MetricException e) {
             logger.warn(METER_EXCEPTION_LOG_FORMAT, meter.getId(), e.getMessage());
         }
 
@@ -247,8 +248,11 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
             storeMetadataLine(createMetadataBuilder(metricBuilder, meter), seenMetadata);
 
-            return metricBuilder.delta(measurement.getValue()).timestamp(Instant.ofEpochMilli(clock.wallTime())).build();
-        } catch (MetricException e) {
+            return metricBuilder.delta(measurement.getValue())
+                .timestamp(Instant.ofEpochMilli(clock.wallTime()))
+                .build();
+        }
+        catch (MetricException e) {
             logger.warn(METER_EXCEPTION_LOG_FORMAT, meter.getId(), e.getMessage());
         }
 
@@ -301,8 +305,11 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
             storeMetadataLine(createMetadataBuilder(metricBuilder, meter), seenMetadata);
 
-            return Stream.of(metricBuilder.summary(min, max, total, count).timestamp(Instant.ofEpochMilli(clock.wallTime())).build());
-        } catch (MetricException e) {
+            return Stream.of(metricBuilder.summary(min, max, total, count)
+                .timestamp(Instant.ofEpochMilli(clock.wallTime()))
+                .build());
+        }
+        catch (MetricException e) {
             logger.warn(METER_EXCEPTION_LOG_FORMAT, meter.getId(), e.getMessage());
         }
 
@@ -358,13 +365,13 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     }
 
     private MetricLineBuilder.TypeStep createMetricBuilder(Meter meter) throws MetricException {
-        return MetricLineBuilder.create(preConfiguration)
-            .metricKey(meter.getId().getName())
-            .dimensions(fromTags(meter.getId().getTags()));
-    }
+        MetricLineBuilder.TypeStep metricLineBuilder = MetricLineBuilder.create(preConfiguration)
+            .metricKey(meter.getId().getName());
+        for (Tag tag : meter.getId().getTags()) {
+            metricLineBuilder.dimension(tag.getKey(), tag.getValue());
+        }
 
-    private Map<String, String> fromTags(List<Tag> tags) {
-        return tags.stream().collect(Collectors.toMap(Tag::getKey, Tag::getValue));
+        return metricLineBuilder;
     }
 
     private <T> Stream<T> streamOf(Iterable<T> iterable) {
@@ -432,25 +439,23 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         }
     }
 
-    private MetricLineBuilder.MetadataStep createMetadataBuilder(
-        MetricLineBuilder.GaugeStep metricBuilder, Meter meter) {
+    private MetricLineBuilder.MetadataStep createMetadataBuilder(MetricLineBuilder.GaugeStep metricBuilder,
+            Meter meter) {
         return enrichMetadataBuilder(metricBuilder.metadata(), meter);
     }
 
-    private MetricLineBuilder.MetadataStep createMetadataBuilder(
-        MetricLineBuilder.CounterStep metricBuilder, Meter meter) {
+    private MetricLineBuilder.MetadataStep createMetadataBuilder(MetricLineBuilder.CounterStep metricBuilder,
+            Meter meter) {
         return enrichMetadataBuilder(metricBuilder.metadata(), meter);
     }
 
-    private MetricLineBuilder.MetadataStep enrichMetadataBuilder(
-        MetricLineBuilder.MetadataStep metadataBuilder, Meter meter) {
-        return metadataBuilder
-            .description(meter.getId().getDescription())
-            .unit(meter.getId().getBaseUnit());
+    private MetricLineBuilder.MetadataStep enrichMetadataBuilder(MetricLineBuilder.MetadataStep metadataBuilder,
+            Meter meter) {
+        return metadataBuilder.description(meter.getId().getDescription()).unit(meter.getId().getBaseUnit());
     }
 
     private void storeMetadataLine(MetricLineBuilder.MetadataStep metadataBuilder, Map<String, String> seenMetadata)
-        throws MetricException {
+            throws MetricException {
         // if the config to export metadata is turned off, the seenMetadata map will be
         // null.
         if (seenMetadata == null) {
@@ -466,7 +471,8 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         if (!seenMetadata.containsKey(key)) {
             // if there is no metadata associated with the key, add it.
             seenMetadata.put(key, metadataLine);
-        } else {
+        }
+        else {
             // get the previously stored metadata line
             String previousMetadataLine = seenMetadata.get(key);
             // if the previous line is not null, a metadata object had already been set in
@@ -509,4 +515,5 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
         return metricKey.toString();
     }
+
 }

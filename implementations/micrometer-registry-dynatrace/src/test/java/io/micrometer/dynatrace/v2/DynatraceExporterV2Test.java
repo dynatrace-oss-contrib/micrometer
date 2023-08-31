@@ -49,7 +49,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.*;
 
@@ -168,8 +167,7 @@ class DynatraceExporterV2Test {
 
         List<String> lines = exporter.toCounterLine(counter, SEEN_METADATA).collect(Collectors.toList());
         assertThat(lines).hasSize(1);
-        assertThat(lines.get(0))
-            .isEqualTo("my.counter,dt.metrics.source=micrometer count,delta=3 " + clock.wallTime());
+        assertThat(lines.get(0)).isEqualTo("my.counter,dt.metrics.source=micrometer count,delta=3 " + clock.wallTime());
     }
 
     @Test
@@ -243,8 +241,8 @@ class DynatraceExporterV2Test {
 
         List<String> lines = exporter.toTimerLine(timer, SEEN_METADATA).collect(Collectors.toList());
         assertThat(lines).hasSize(1);
-        assertThat(lines.get(0)).isEqualTo(
-                "my.timer,dt.metrics.source=micrometer gauge,min=10,max=60,sum=90,count=3 " + clock.wallTime());
+        assertThat(lines.get(0))
+            .isEqualTo("my.timer,dt.metrics.source=micrometer gauge,min=10,max=60,sum=90,count=3 " + clock.wallTime());
     }
 
     @Test
@@ -255,8 +253,8 @@ class DynatraceExporterV2Test {
 
         List<String> lines = exporter.toTimerLine(timer, SEEN_METADATA).collect(Collectors.toList());
         assertThat(lines).hasSize(1);
-        assertThat(lines.get(0)).isEqualTo(
-                "my.timer,dt.metrics.source=micrometer gauge,min=60,max=60,sum=60,count=1 " + clock.wallTime());
+        assertThat(lines.get(0))
+            .isEqualTo("my.timer,dt.metrics.source=micrometer gauge,min=60,max=60,sum=60,count=1 " + clock.wallTime());
 
         clock.add(config.step());
         // Before the update to drop zero count lines, this would contain 1 line (with
@@ -348,9 +346,9 @@ class DynatraceExporterV2Test {
 
         List<String> lines = exporter.toLongTaskTimerLine(longTaskTimer, SEEN_METADATA).collect(Collectors.toList());
         assertThat(lines).hasSize(1);
-        assertThat(lines.get(0)).isEqualTo(
-                "my.longTaskTimer,dt.metrics.source=micrometer gauge,min=2000,max=48000,sum=236000,count=11 "
-                        + clock.wallTime());
+        assertThat(lines.get(0))
+            .isEqualTo("my.longTaskTimer,dt.metrics.source=micrometer gauge,min=2000,max=48000,sum=236000,count=11 "
+                    + clock.wallTime());
     }
 
     @Test
@@ -518,8 +516,7 @@ class DynatraceExporterV2Test {
                 .hasLineCount(4)
                 .containsSubsequence("my.counter,dt.metrics.source=micrometer count,delta=12 " + clock.wallTime(),
                         "my.gauge,dt.metrics.source=micrometer gauge,42 " + clock.wallTime(),
-                        "my.timer,dt.metrics.source=micrometer gauge,min=22,max=22,sum=22,count=1 "
-                                + clock.wallTime(),
+                        "my.timer,dt.metrics.source=micrometer gauge,min=22,max=22,sum=22,count=1 " + clock.wallTime(),
                         "#my.timer gauge dt.meta.unit=milliseconds");
         }));
     }
@@ -759,23 +756,15 @@ class DynatraceExporterV2Test {
         List<String> lines = Arrays.asList(stringArgumentCaptor.getValue().split("\n"));
 
         List<List<String>> expectedDimes = Arrays.asList(
-            Arrays.asList("counter-number=counter1", "dt.metrics.source=micrometer"),
-            Arrays.asList("counter-number=counter2", "dt.metrics.source=micrometer"),
-            Arrays.asList("dt.meta.description=count\\ description", "dt.meta.unit=Bytes"));
-        List<String> expectedBases = Arrays.asList(
-            "my.count count,delta=5.234 " + clock.wallTime(),
-            "my.count count,delta=2.345 " + clock.wallTime(),
-            "#my.count count");
+                Arrays.asList("counter-number=counter1", "dt.metrics.source=micrometer"),
+                Arrays.asList("counter-number=counter2", "dt.metrics.source=micrometer"),
+                Arrays.asList("dt.meta.description=count\\ description", "dt.meta.unit=Bytes"));
+        List<String> expectedBases = Arrays.asList("my.count count,delta=5.234 " + clock.wallTime(),
+                "my.count count,delta=2.345 " + clock.wallTime(), "#my.count count");
 
-        /*assertThat(lines).hasSize(3)
-            .containsExactly(
-                    "my.count,counter-number=counter1,dt.metrics.source=micrometer count,delta=5.234 "
-                            + clock.wallTime(),
-                    "my.count,counter-number=counter2,dt.metrics.source=micrometer count,delta=2.345 "
-                            + clock.wallTime(),
-                    "#my.count count dt.meta.description=count\\ description,dt.meta.unit=Bytes");*/
-
-        assertThat(lines).hasSize(3).extracting(line -> extractBase(line)).containsExactlyInAnyOrderElementsOf(expectedBases);
+        assertThat(lines).hasSize(3)
+            .extracting(line -> extractBase(line))
+            .containsExactlyInAnyOrderElementsOf(expectedBases);
         for (int i = 0; i < lines.size(); i++) {
             assertThat(extractDims(lines.get(i))).containsExactlyInAnyOrderElementsOf(expectedDimes.get(i));
         }
@@ -805,17 +794,18 @@ class DynatraceExporterV2Test {
         exporter.export(meterRegistry.getMeters());
 
         List<List<String>> expectedDimes = Arrays.asList(
-            Arrays.asList("counter-number=counter1", "dt.metrics.source=micrometer"),
-            Arrays.asList("counter-number=counter2", "dt.metrics.source=micrometer"));
-        List<String> expectedBases = Arrays.asList(
-            "my.count count,delta=5.234 " + clock.wallTime(),
-            "my.count count,delta=2.345 " + clock.wallTime());
+                Arrays.asList("counter-number=counter1", "dt.metrics.source=micrometer"),
+                Arrays.asList("counter-number=counter2", "dt.metrics.source=micrometer"));
+        List<String> expectedBases = Arrays.asList("my.count count,delta=5.234 " + clock.wallTime(),
+                "my.count count,delta=2.345 " + clock.wallTime());
 
         ArgumentCaptor<String> stringArgumentCaptor = ArgumentCaptor.forClass(String.class);
         verify(builder).withPlainText(stringArgumentCaptor.capture());
         List<String> lines = Arrays.asList(stringArgumentCaptor.getValue().split("\n"));
 
-        assertThat(lines).hasSize(2).extracting(line -> extractBase(line)).containsExactlyInAnyOrderElementsOf(expectedBases);
+        assertThat(lines).hasSize(2)
+            .extracting(line -> extractBase(line))
+            .containsExactlyInAnyOrderElementsOf(expectedBases);
         for (int i = 0; i < lines.size(); i++) {
             assertThat(extractDims(lines.get(i))).containsExactlyInAnyOrderElementsOf(expectedDimes.get(i));
         }
@@ -913,12 +903,16 @@ class DynatraceExporterV2Test {
     }
 
     private String extractBase(String line) {
-        if(line.startsWith("#")) return String.join(" ", Arrays.copyOfRange(line.split(" ", 3),0, 2));
-        return line.split(",", 2)[0] + " " + line.split(" ")[1] + (line.split(" ").length == 3 ? " " + line.split(" ")[2] : "");
+        if (line.startsWith("#"))
+            return String.join(" ", Arrays.copyOfRange(line.split(" ", 3), 0, 2));
+        return line.split(",", 2)[0] + " " + line.split(" ")[1]
+                + (line.split(" ").length == 3 ? " " + line.split(" ")[2] : "");
     }
 
     private List<String> extractDims(String line) {
-        if(line.startsWith("#")) return Arrays.asList(line.split(" ", 3)[2].split(","));
+        if (line.startsWith("#"))
+            return Arrays.asList(line.split(" ", 3)[2].split(","));
         return Arrays.asList(line.split(",", 2)[1].split(" ")[0].split(","));
     }
+
 }
