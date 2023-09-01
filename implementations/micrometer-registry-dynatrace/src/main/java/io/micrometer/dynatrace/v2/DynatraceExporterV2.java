@@ -22,6 +22,7 @@ import io.micrometer.common.util.internal.logging.InternalLoggerFactory;
 import io.micrometer.common.util.internal.logging.WarnThenDebugLogger;
 import io.micrometer.core.instrument.*;
 import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.config.MeterFilter;
 import io.micrometer.core.instrument.distribution.HistogramSnapshot;
 import io.micrometer.core.instrument.distribution.ValueAtPercentile;
 import io.micrometer.core.ipc.http.HttpSender;
@@ -51,6 +52,52 @@ import java.util.stream.StreamSupport;
  */
 public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
+    public MeterFilter metadataMeterFilter() {
+        return new MeterFilter() {
+            @Override
+            public Meter.Id map(Meter.Id id) {
+                metadataAggregator.makeMetadataLine(id);
+
+                return id;
+            }
+        };
+    }
+
+    private class MetadataAggregator {
+        private final Set<String> metadataLines = new HashSet<>();
+
+        void makeMetadataLine(Meter.Id meterId) {
+            Metric.Builder builder = metricBuilderFactory.newMetricBuilder(meterId.getName());
+            try {
+                if (meterId.getType() == Meter.Type.COUNTER) {
+                    builder.setDoubleCounterValueDelta(1);
+                }
+                else {
+                    builder.setDoubleGaugeValue(0);
+                }
+
+                String metadataLine = builder
+                    .setUnit(meterId.getBaseUnit())
+                    .setDescription(meterId.getDescription())
+                    .serializeMetadataLine();
+
+                if (metadataLine != null) {
+                    metadataLines.add(metadataLine);
+                }
+
+            } catch (MetricException e) {
+                logger.warn("failed to create metadata line for meter " + meterId.getName() + ": " + e.getMessage());
+            }
+        }
+
+        Set<String> getMetadataLinesAndReset() {
+            Set<String> lines = metadataLines;
+            metadataLines.clear();
+            return lines;
+        }
+    }
+
+
     private static final String METER_EXCEPTION_LOG_FORMAT = "Could not serialize meter {}: {}";
 
     private static final Pattern EXTRACT_LINES_OK = Pattern.compile("\"linesOk\":\\s?(\\d+)");
@@ -73,6 +120,8 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
     private final MetricBuilderFactory metricBuilderFactory;
 
+    private final MetadataAggregator metadataAggregator;
+
     public DynatraceExporterV2(DynatraceConfig config, Clock clock, HttpSender httpClient) {
         super(config, clock, httpClient);
 
@@ -87,6 +136,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         }
 
         metricBuilderFactory = factoryBuilder.build();
+        metadataAggregator = new MetadataAggregator();
     }
 
     private boolean isValidEndpoint(String uri) {
@@ -150,6 +200,14 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
                 }
             });
         }
+
+        metadataAggregator.getMetadataLinesAndReset().forEach(line -> {
+            batch.add(line);
+            if (batch.size() == partitionSize) {
+                send(batch);
+                batch.clear();
+            }
+        });
 
         if (!batch.isEmpty()) {
             send(batch);

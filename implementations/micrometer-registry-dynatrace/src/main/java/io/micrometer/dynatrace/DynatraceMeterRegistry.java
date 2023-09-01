@@ -78,7 +78,16 @@ public class DynatraceMeterRegistry extends StepMeterRegistry {
 
         if (config.apiVersion() == DynatraceApiVersion.V2) {
             logger.info("Exporting to Dynatrace metrics API v2");
-            this.exporter = new DynatraceExporterV2(config, clock, httpClient);
+
+            DynatraceExporterV2 exporterV2 = new DynatraceExporterV2(config, clock, httpClient);
+
+            if (config.exportMeterMetadata()) {
+                // allows the exporter to get notified when a new meter is registered.
+                config().meterFilter(exporterV2.metadataMeterFilter());
+            }
+
+            this.exporter = exporterV2;
+
             // Not used for Timer and DistributionSummary in V2 anymore, but still used
             // for the other timer types.
             registerMinPercentile();
