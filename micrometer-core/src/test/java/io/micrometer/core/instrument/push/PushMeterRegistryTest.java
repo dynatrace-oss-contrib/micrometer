@@ -241,11 +241,14 @@ class PushMeterRegistryTest {
 
         // close registry while export is still running. When close returns, the
         // application exits.
+        // The overlapping duration timeout is zero in this case, so close will return
+        // immediately, since publishing is already in progress.
         registry.close();
 
-        // value has not yet rolled over, and we export the value from the previous export
-        // and only 1 export finished
-        // THIS IS A STALE STATE, the last export was not finished.
+        // value has not yet rolled over, and the last exported data is from the previous
+        // export.
+        // THIS IS A STALE STATE, the last export was not finished and the final exported
+        // state is "old" data.
         assertThat(registry.getNumExports()).isOne();
         assertThat(registry.getMeasurements()).hasSize(1);
         assertThat(registry.getMeasurements().get(0)).isCloseTo(3, tolerance);
@@ -320,17 +323,18 @@ class PushMeterRegistryTest {
 
         // first export: no overlap, everything works as expected.
         clock.add(config.step());
+
         // wait until publish has started from the timed invocation.
         publishStartedBarrier.await(barrierTimeoutMillis, MILLISECONDS);
         // do not do any artificial work.
         publishWorkBarrier.await(barrierTimeoutMillis, MILLISECONDS);
 
-        // data collection for the second export cycle starts here, as publishing is
-        // already in progress
-
         // wait for the first publish to finish. Ensures values are processed when
         // retrieving them from the registry
         publishFinishedBarrier.await(barrierTimeoutMillis, MILLISECONDS);
+
+        // data collection for the second export cycle starts
+        // First assert on the data exported in the first cycle:
 
         assertThat(registry.getNumExports()).isOne();
         assertThat(registry.getMeasurements()).hasSize(1);
@@ -346,13 +350,13 @@ class PushMeterRegistryTest {
         // wait until the second publish starts
         publishStartedBarrier.await(barrierTimeoutMillis, MILLISECONDS);
         // data collection for the third export cycle starts here.
-        // Below, we're waiting for artificial work to be done for the second cycle to
-        // finish.
 
         // close registry while export is still running. When close returns, the
         // application exits. Since the overlappingShutdownWaitTimeout is large enough,
         // registry.close() will wait until the scheduled export is finished.
         assertThat(registry.isPublishing()).isTrue();
+        // Run close from a background thread, to ensure this is happening at the same
+        // time as the export already in progress:
         ExecutorService executor = Executors.newSingleThreadExecutor();
         executor.submit(registry::close);
         var assertionFuture = executor.submit(() -> {
