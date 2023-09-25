@@ -158,6 +158,7 @@ class PushMeterRegistryTest {
     }
 
     @Test
+    @Issue("#3872")
     void scheduledPublishInterruptedByCloseWillDropData_whenShutdownTimeoutIsZero()
             throws InterruptedException, BrokenBarrierException, TimeoutException {
 
@@ -200,7 +201,7 @@ class PushMeterRegistryTest {
                 publishWorkBarrier, publishFinishedBarrier);
         registry.start(threadFactory);
 
-        // first export cycle starts here
+        // data collection for the first export cycle starts here
 
         Counter counter = registry.counter("counter");
         counter.increment(3);
@@ -209,31 +210,33 @@ class PushMeterRegistryTest {
         assertThat(registry.getMeasurements()).isEmpty();
         assertThat(registry.getNumExports()).isZero();
 
-        // # first export
+        // first export: everything goes according to plan, no overlaps.
         clock.add(config.step());
         // wait until publish has started from the timed invocation.
         publishStartedBarrier.await(barrierTimeoutMillis, MILLISECONDS);
         // artificial work finishes.
         publishWorkBarrier.await(barrierTimeoutMillis, MILLISECONDS);
-        // second export cycle starts here
-
         // wait for the publish to finish. Ensures values are processed when retrieving
         // them from the registry
         publishFinishedBarrier.await(barrierTimeoutMillis, MILLISECONDS);
 
+        // data collection for the second export cycle starts here.
+        // before continuing to the second export, assert on data from the first cycle:
         assertThat(registry.getNumExports()).isOne();
         assertThat(registry.getMeasurements()).hasSize(1);
         assertThat(registry.getMeasurements().get(0)).isCloseTo(3, tolerance);
 
+        // record data in the second export interval
         clock.add(config.step().dividedBy(2));
         counter.increment(4);
         clock.add(config.step().dividedBy(2));
 
+        // second export: will be interrupted by a shutdown signal
         // wait until the second publish starts
         publishStartedBarrier.await(barrierTimeoutMillis, MILLISECONDS);
 
-        // third export cycle starts here, since we waited for the publishStartedBarrier
-        // above we know that publishing is in progress
+        // data collection for the third export cycle starts here.
+        // Since we waited for the publishStartedBarrier above, we know that publishing is in progress
 
         // close registry while export is still running. When close returns, the
         // application exits.
@@ -250,7 +253,7 @@ class PushMeterRegistryTest {
         publishWorkBarrier.await(barrierTimeoutMillis, MILLISECONDS);
 
         // This would not happen when registry.close() is called, as the app will wait for
-        // waits for close() to finish, then shut down immediately.
+        // close() to finish, then shut down immediately.
         // In this test, we can see that it _would_ fix itself if we waited for the
         // already in-progress publish to finish.
         publishFinishedBarrier.await(barrierTimeoutMillis, MILLISECONDS);
@@ -261,6 +264,7 @@ class PushMeterRegistryTest {
     }
 
     @Test
+    @Issue("#3872")
     void scheduledPublishInterruptedByCloseWillNotDropData_whenShutdownTimeoutIsBigEnough()
             throws InterruptedException, BrokenBarrierException, TimeoutException, ExecutionException {
 
@@ -304,7 +308,7 @@ class PushMeterRegistryTest {
                 publishWorkBarrier, publishFinishedBarrier);
         registry.start(threadFactory);
 
-        // first export cycle starts here
+        // data collection for first export cycle starts here.
 
         Counter counter = registry.counter("counter");
         counter.increment(3);
@@ -313,30 +317,32 @@ class PushMeterRegistryTest {
         assertThat(registry.getMeasurements()).isEmpty();
         assertThat(registry.getNumExports()).isZero();
 
-        // # first export
+        // first export: no overlap, everything works as expected.
         clock.add(config.step());
         // wait until publish has started from the timed invocation.
         publishStartedBarrier.await(barrierTimeoutMillis, MILLISECONDS);
         // do not do any artificial work.
         publishWorkBarrier.await(barrierTimeoutMillis, MILLISECONDS);
 
-        // second export cycle starts here
+        // data collection for the second export cycle starts here, as publishing is already in progress
 
-        // wait for the publish to finish. Ensures values are processed when retrieving
-        // them from the registry
+        // wait for the first publish to finish. Ensures values are processed when retrieving them from the registry
         publishFinishedBarrier.await(barrierTimeoutMillis, MILLISECONDS);
 
         assertThat(registry.getNumExports()).isOne();
         assertThat(registry.getMeasurements()).hasSize(1);
         assertThat(registry.getMeasurements().get(0)).isCloseTo(3, tolerance);
 
+        // add data for the second export
         clock.add(config.step().dividedBy(2));
         counter.increment(4);
         clock.add(config.step().dividedBy(2));
 
+        // second publish: will be interrupted by the shutdown signal, but will wait for the export to finish since the timeout is big enough.
         // wait until the second publish starts
         publishStartedBarrier.await(barrierTimeoutMillis, MILLISECONDS);
-        // third export cycle starts here, we're waiting for artificial work to be done
+        // data collection for the third export cycle starts here.
+        // Below, we're waiting for artificial work to be done for the second cycle to finish.
 
         // close registry while export is still running. When close returns, the
         // application exits. Since the overlappingShutdownWaitTimeout is large enough,
