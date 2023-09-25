@@ -236,7 +236,8 @@ class PushMeterRegistryTest {
         publishStartedBarrier.await(barrierTimeoutMillis, MILLISECONDS);
 
         // data collection for the third export cycle starts here.
-        // Since we waited for the publishStartedBarrier above, we know that publishing is in progress
+        // Since we waited for the publishStartedBarrier above, we know that publishing is
+        // in progress
 
         // close registry while export is still running. When close returns, the
         // application exits.
@@ -324,9 +325,11 @@ class PushMeterRegistryTest {
         // do not do any artificial work.
         publishWorkBarrier.await(barrierTimeoutMillis, MILLISECONDS);
 
-        // data collection for the second export cycle starts here, as publishing is already in progress
+        // data collection for the second export cycle starts here, as publishing is
+        // already in progress
 
-        // wait for the first publish to finish. Ensures values are processed when retrieving them from the registry
+        // wait for the first publish to finish. Ensures values are processed when
+        // retrieving them from the registry
         publishFinishedBarrier.await(barrierTimeoutMillis, MILLISECONDS);
 
         assertThat(registry.getNumExports()).isOne();
@@ -338,11 +341,13 @@ class PushMeterRegistryTest {
         counter.increment(4);
         clock.add(config.step().dividedBy(2));
 
-        // second publish: will be interrupted by the shutdown signal, but will wait for the export to finish since the timeout is big enough.
+        // second publish: will be interrupted by the shutdown signal, but will wait for
+        // the export to finish since the timeout is big enough.
         // wait until the second publish starts
         publishStartedBarrier.await(barrierTimeoutMillis, MILLISECONDS);
         // data collection for the third export cycle starts here.
-        // Below, we're waiting for artificial work to be done for the second cycle to finish.
+        // Below, we're waiting for artificial work to be done for the second cycle to
+        // finish.
 
         // close registry while export is still running. When close returns, the
         // application exits. Since the overlappingShutdownWaitTimeout is large enough,
