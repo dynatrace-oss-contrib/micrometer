@@ -23,16 +23,19 @@ import io.micrometer.core.instrument.internal.DefaultLongTaskTimer;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Implementation of the LongTaskTimer that ensures produced data is consistent for exporting to Dynatrace.
+ * Implementation of the LongTaskTimer that ensures produced data is consistent for
+ * exporting to Dynatrace.
  *
  * @author Georg Pirklbauer
  * @since 1.12.2
  */
 public class DynatraceLongTaskTimer extends DefaultLongTaskTimer implements DynatraceSummarySnapshotSupport {
 
-    private static final WarnThenDebugLogger LOGGER_CANT_RESET_LONGTASKTIMER = new WarnThenDebugLogger(DynatraceLongTaskTimer.class);
+    private static final WarnThenDebugLogger LOGGER_CANT_RESET_LONGTASKTIMER = new WarnThenDebugLogger(
+            DynatraceLongTaskTimer.class);
 
-    public DynatraceLongTaskTimer(Id id, Clock clock, TimeUnit baseTimeUnit, DistributionStatisticConfig distributionStatisticConfig, boolean supportsAggregablePercentiles) {
+    public DynatraceLongTaskTimer(Id id, Clock clock, TimeUnit baseTimeUnit,
+            DistributionStatisticConfig distributionStatisticConfig, boolean supportsAggregablePercentiles) {
         super(id, clock, baseTimeUnit, distributionStatisticConfig, supportsAggregablePercentiles);
     }
 
@@ -51,7 +54,8 @@ public class DynatraceLongTaskTimer extends DefaultLongTaskTimer implements Dyna
 
         // iterate active samples and create a Dynatrace summary.
         super.forEachActive(sample -> {
-            // sample.duration will return -1 if the task is already finished (only currently active tasks are measured).
+            // sample.duration will return -1 if the task is already finished (only
+            // currently active tasks are measured).
             summary.recordNonNegative(sample.duration(unit));
         });
 
@@ -65,11 +69,14 @@ public class DynatraceLongTaskTimer extends DefaultLongTaskTimer implements Dyna
 
     @Override
     public DynatraceSummarySnapshot takeSummarySnapshotAndReset(TimeUnit unit) {
-        // LongTaskTimers record a snapshot of in-flight operations, e.g. the number of active requests.
+        // LongTaskTimers record a snapshot of in-flight operations, e.g., the number of
+        // active requests.
         // Therefore, the Snapshot needs to be created from scratch during the export.
-        // In takeSummarySnapshot() above, the Summary object is deleted at the end of the method,
-        // therefore effectively resetting the snapshot.
-        LOGGER_CANT_RESET_LONGTASKTIMER.log("Called takeSummarySnapshotAndReset() on a LongTaskTimer, which is automatically reset. Ignoring explicit reset call - use takeSummarySnapshot() instead.");
+        // In takeSummarySnapshot() above, the Summary object is deleted at the end of the
+        // method, therefore effectively resetting the snapshot.
+        LOGGER_CANT_RESET_LONGTASKTIMER.log(
+                "Called takeSummarySnapshotAndReset() on a LongTaskTimer, which is automatically reset. Ignoring explicit reset call - use takeSummarySnapshot() instead.");
         return takeSummarySnapshot(unit);
     }
+
 }

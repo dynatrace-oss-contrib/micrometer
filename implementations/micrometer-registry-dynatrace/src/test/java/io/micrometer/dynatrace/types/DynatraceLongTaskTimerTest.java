@@ -20,8 +20,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Tests for {@link DynatraceLongTaskTimer}.
  */
 class DynatraceLongTaskTimerTest {
+
     private static final Meter.Id ID = new Meter.Id("test.id", Tags.empty(), "1", "desc",
-        Meter.Type.DISTRIBUTION_SUMMARY);
+            Meter.Type.DISTRIBUTION_SUMMARY);
 
     private static final DistributionStatisticConfig DISTRIBUTION_STATISTIC_CONFIG = DistributionStatisticConfig.NONE;
 
@@ -31,13 +32,14 @@ class DynatraceLongTaskTimerTest {
 
     @Test
     void testValuesAreRecorded() throws InterruptedException {
-        DynatraceLongTaskTimer ltt = new DynatraceLongTaskTimer(ID, CLOCK, TimeUnit.MILLISECONDS, DISTRIBUTION_STATISTIC_CONFIG, false);
+        DynatraceLongTaskTimer ltt = new DynatraceLongTaskTimer(ID, CLOCK, TimeUnit.MILLISECONDS,
+                DISTRIBUTION_STATISTIC_CONFIG, false);
         ExecutorService executorService = Executors.newSingleThreadExecutor();
 
         CountDownLatch taskHasBeenRunningLatch = new CountDownLatch(1);
         CountDownLatch stopLatch = new CountDownLatch(1);
 
-        executorService.submit(()-> {
+        executorService.submit(() -> {
             ltt.record(() -> {
                 CLOCK.add(Duration.ofMillis(100));
                 taskHasBeenRunningLatch.countDown();
@@ -45,7 +47,8 @@ class DynatraceLongTaskTimerTest {
                 try {
                     // wait until the snapshot has been taken.
                     stopLatch.await(300, TimeUnit.MILLISECONDS);
-                } catch (InterruptedException e) {
+                }
+                catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
             });
@@ -61,29 +64,30 @@ class DynatraceLongTaskTimerTest {
         assertThat(snapshot.getMax()).isCloseTo(100, TOLERANCE);
         assertThat(snapshot.getCount()).isEqualTo(1);
         // in the case of count == 1, the total has to be equal to min and max
-        assertThat(snapshot.getTotal())
-            .isGreaterThan(0)
+        assertThat(snapshot.getTotal()).isGreaterThan(0)
             .isCloseTo(snapshot.getMin(), TOLERANCE)
             .isCloseTo(snapshot.getMax(), TOLERANCE);
     }
 
     /**
-     * This test *could* be done with the MockClock, but it gets pretty unintuitive. That is because when adding to the
-     * MockClock in one Thread, it automatically adds to the other thread as well and time is basically "double-counted".
+     * This test *could* be done with the MockClock, but it gets pretty unintuitive. That
+     * is because when adding to the MockClock in one Thread, it automatically adds to the
+     * other thread as well and time is basically "double-counted".
      */
     @Test
     void testTwoValuesAreRecorded() throws InterruptedException {
-        // use the system clock, as it is much easier to understand than when using the MockClock
-        // (When using MockClock, adding to the clock in two separate threads basically means that two things happen
-        // at the same time).
-        DynatraceLongTaskTimer ltt = new DynatraceLongTaskTimer(ID, Clock.SYSTEM, TimeUnit.MILLISECONDS, DISTRIBUTION_STATISTIC_CONFIG, false);
+        // use the system clock, as it is much easier to understand than when using the
+        // MockClock (When using MockClock, adding to the clock in two separate threads
+        // basically means that two things happen at the same time).
+        DynatraceLongTaskTimer ltt = new DynatraceLongTaskTimer(ID, Clock.SYSTEM, TimeUnit.MILLISECONDS,
+                DISTRIBUTION_STATISTIC_CONFIG, false);
         ExecutorService executorService = Executors.newFixedThreadPool(2);
 
         // both tasks need to be running for a while before we take the snapshot
         CountDownLatch taskHasBeenRunningLatch = new CountDownLatch(2);
         CountDownLatch stopLatch = new CountDownLatch(1);
 
-        executorService.submit(()-> {
+        executorService.submit(() -> {
             ltt.record(() -> {
                 try {
                     Thread.sleep(70);
@@ -91,7 +95,8 @@ class DynatraceLongTaskTimerTest {
 
                     // wait until the snapshot has been taken.
                     stopLatch.await(300, TimeUnit.MILLISECONDS);
-                } catch (InterruptedException e) {
+                }
+                catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
             });
@@ -105,7 +110,8 @@ class DynatraceLongTaskTimerTest {
 
                     // wait until the snapshot has been taken.
                     stopLatch.await(300, TimeUnit.MILLISECONDS);
-                } catch (InterruptedException e) {
+                }
+                catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
             });
@@ -117,12 +123,16 @@ class DynatraceLongTaskTimerTest {
         // can release the background tasks
         stopLatch.countDown();
 
-        // the first Thread has been "running" for ~30ms at the time of recording and will supply the min
+        // the first Thread has been "running" for ~30ms at the time of recording and will
+        // supply the min
         assertThat(snapshot.getMin()).isGreaterThanOrEqualTo(30);
-        // the second Thread has been "running" for ~70ms at the time of recording and will supply the max
+        // the second Thread has been "running" for ~70ms at the time of recording and
+        // will supply the max
         assertThat(snapshot.getMax()).isGreaterThanOrEqualTo(70).isLessThan(100);
-        // the min is greater than 30, and the max is greater than 70, so together they have to be greater than 100.
+        // the min is greater than 30, and the max is greater than 70, so together they
+        // have to be greater than 100.
         assertThat(snapshot.getTotal()).isGreaterThan(100);
         assertThat(snapshot.getCount()).isEqualTo(2);
     }
+
 }

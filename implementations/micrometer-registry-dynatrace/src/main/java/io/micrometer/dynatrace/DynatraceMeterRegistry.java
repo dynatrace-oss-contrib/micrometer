@@ -125,7 +125,8 @@ public class DynatraceMeterRegistry extends StepMeterRegistry {
     @Override
     protected LongTaskTimer newLongTaskTimer(Meter.Id id, DistributionStatisticConfig distributionStatisticConfig) {
         if (useDynatraceSummaryInstruments) {
-            return new DynatraceLongTaskTimer(id, clock, exporter.getBaseTimeUnit(), distributionStatisticConfig, false);
+            return new DynatraceLongTaskTimer(id, clock, exporter.getBaseTimeUnit(), distributionStatisticConfig,
+                    false);
         }
         return super.newLongTaskTimer(id, distributionStatisticConfig);
     }
