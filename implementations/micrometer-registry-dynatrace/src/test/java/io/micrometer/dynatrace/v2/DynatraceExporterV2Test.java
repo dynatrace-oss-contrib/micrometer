@@ -62,6 +62,7 @@ import static org.mockito.Mockito.*;
  * @author Jonatan Ivanov
  */
 class DynatraceExporterV2Test {
+
     private MockLoggerFactory loggerFactory;
 
     private MockLogger logger;
@@ -92,7 +93,8 @@ class DynatraceExporterV2Test {
         this.httpClient = mock(HttpSender.class);
 
         // ensures new MockLoggers are created for each test.
-        // Since there are some asserts on log lines, different test runs do not reuse the same loggers and thus do not interfere.
+        // Since there are some asserts on log lines, different test runs do not reuse the
+        // same loggers and thus do not interfere.
         this.loggerFactory = new MockLoggerFactory();
         this.exporter = loggerFactory.injectLogger(() -> createExporter(httpClient));
         this.logger = loggerFactory.getLogger(DynatraceExporterV2.class);
@@ -132,15 +134,11 @@ class DynatraceExporterV2Test {
 
         // first export; log at warn
         assertThat(exporter.toGaugeLine(gauge, SEEN_METADATA)).isEmpty();
-        assertThat(nanGaugeLogger.getLogEvents())
-            .hasSize(1)
-            .containsExactly(warnEvent);
+        assertThat(nanGaugeLogger.getLogEvents()).hasSize(1).containsExactly(warnEvent);
 
         // second export; log at debug
         assertThat(exporter.toGaugeLine(gauge, SEEN_METADATA)).isEmpty();
-        assertThat(nanGaugeLogger.getLogEvents())
-            .hasSize(2)
-            .containsExactly(warnEvent, debugEvent);
+        assertThat(nanGaugeLogger.getLogEvents()).hasSize(2).containsExactly(warnEvent, debugEvent);
     }
 
     @Test
@@ -688,15 +686,21 @@ class DynatraceExporterV2Test {
         Throwable expectedException = new RuntimeException("test exception", new Throwable("root cause exception"));
         when(httpClient.post(config.uri())).thenThrow(expectedException);
 
-        // the "general" logger just logs the message, the WarnThenDebugLogger contains the exception & stack trace.
+        // the "general" logger just logs the message, the WarnThenDebugLogger contains
+        // the exception & stack trace.
         String expectedWarnThenDebugMessage = "Stack trace for previous 'Failed metric ingestion' warning log:";
         // these two will be logged by the WarnThenDebugLogger:
-        // the warning message is suffixed with "Note that subsequent logs will be logged at debug level.".
-        LogEvent warnThenDebugWarningLog = new LogEvent(WARN, String.join(" ", expectedWarnThenDebugMessage, expectedException.getMessage(), subsequentLogsAsDebug), expectedException);
-        LogEvent warnThenDebugDebugLog = new LogEvent(DEBUG, String.join(" ", expectedWarnThenDebugMessage, expectedException.getMessage()), expectedException);
+        // the warning message is suffixed with "Note that subsequent logs will be logged
+        // at debug level.".
+        LogEvent warnThenDebugWarningLog = new LogEvent(WARN,
+                String.join(" ", expectedWarnThenDebugMessage, expectedException.getMessage(), subsequentLogsAsDebug),
+                expectedException);
+        LogEvent warnThenDebugDebugLog = new LogEvent(DEBUG,
+                String.join(" ", expectedWarnThenDebugMessage, expectedException.getMessage()), expectedException);
 
         // this will be logged by the "general" logger in a single line (once per export)
-        LogEvent expectedExceptionLogMessage = new LogEvent(WARN, "Failed metric ingestion: java.lang.RuntimeException: " + expectedException.getMessage(), null);
+        LogEvent expectedExceptionLogMessage = new LogEvent(WARN,
+                "Failed metric ingestion: java.lang.RuntimeException: " + expectedException.getMessage(), null);
 
         meterRegistry.gauge("my.gauge", 1d);
         Gauge gauge = meterRegistry.find("my.gauge").gauge();
@@ -704,27 +708,31 @@ class DynatraceExporterV2Test {
         // first export
         exporter.export(Collections.singletonList(gauge));
 
-        // after the first export, the general logger only has the WARN event, but not the debug event.
+        // after the first export, the general logger only has the WARN event, but not the
+        // debug event.
         assertThat(logger.getLogEvents()).containsOnlyOnce(expectedExceptionLogMessage);
 
-        long countExceptionLogsFirstExport = logger.getLogEvents().stream().filter(event -> event.equals(expectedExceptionLogMessage)).count();
+        long countExceptionLogsFirstExport = logger.getLogEvents()
+            .stream()
+            .filter(event -> event.equals(expectedExceptionLogMessage))
+            .count();
         assertThat(countExceptionLogsFirstExport).isEqualTo(1);
 
         // the WarnThenDebugLogger only has one event so far.
-        assertThat(stackTraceLogger.getLogEvents())
-            .hasSize(1)
-                .containsExactly(warnThenDebugWarningLog);
+        assertThat(stackTraceLogger.getLogEvents()).hasSize(1).containsExactly(warnThenDebugWarningLog);
 
         // second export
         exporter.export(Collections.singletonList(gauge));
 
         // after the second export, the general logger contains the warning log twice
-        long countExceptionLogsSecondExport = logger.getLogEvents().stream().filter(event -> event.equals(expectedExceptionLogMessage)).count();
+        long countExceptionLogsSecondExport = logger.getLogEvents()
+            .stream()
+            .filter(event -> event.equals(expectedExceptionLogMessage))
+            .count();
         assertThat(countExceptionLogsSecondExport).isEqualTo(2);
 
         // the WarnThenDebugLogger now has two logs.
-        assertThat(stackTraceLogger.getLogEvents())
-            .hasSize(2)
+        assertThat(stackTraceLogger.getLogEvents()).hasSize(2)
             .containsExactly(warnThenDebugWarningLog, warnThenDebugDebugLog);
     }
 
@@ -1016,13 +1024,13 @@ class DynatraceExporterV2Test {
 
     @Test
     void conflictingMetadataIsIgnored_testLogWarnThenDebug() {
-        MockLogger metadataDiscrepancyLogger = loggerFactory.getLogger(WarnThenDebugLoggers.MetadataDiscrepancyLogger.class);
+        MockLogger metadataDiscrepancyLogger = loggerFactory
+            .getLogger(WarnThenDebugLoggers.MetadataDiscrepancyLogger.class);
 
-        String expectedLogMessage =
-            "Metadata discrepancy detected:\n" +
-            "original metadata:\t#my.count count dt.meta.description=count\\ 1\\ description,dt.meta.unit=Bytes\n" +
-            "tried to set new:\t#my.count count dt.meta.description=count\\ description\n" +
-            "Metadata for metric key my.count will not be sent.";
+        String expectedLogMessage = "Metadata discrepancy detected:\n"
+                + "original metadata:\t#my.count count dt.meta.description=count\\ 1\\ description,dt.meta.unit=Bytes\n"
+                + "tried to set new:\t#my.count count dt.meta.description=count\\ description\n"
+                + "Metadata for metric key my.count will not be sent.";
         LogEvent warnEvent = new LogEvent(WARN, String.join(" ", expectedLogMessage, subsequentLogsAsDebug), null);
         LogEvent debugEvent = new LogEvent(DEBUG, expectedLogMessage, null);
 
@@ -1048,15 +1056,11 @@ class DynatraceExporterV2Test {
         // first export
         exporter.export(meterRegistry.getMeters());
 
-        assertThat(metadataDiscrepancyLogger.getLogEvents())
-            .hasSize(1)
-            .containsExactly(warnEvent);
+        assertThat(metadataDiscrepancyLogger.getLogEvents()).hasSize(1).containsExactly(warnEvent);
 
         // second export
         exporter.export(meterRegistry.getMeters());
-        assertThat(metadataDiscrepancyLogger.getLogEvents())
-            .hasSize(2)
-            .containsExactly(warnEvent, debugEvent);
+        assertThat(metadataDiscrepancyLogger.getLogEvents()).hasSize(2).containsExactly(warnEvent, debugEvent);
 
     }
 

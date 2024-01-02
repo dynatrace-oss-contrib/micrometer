@@ -18,21 +18,29 @@ package io.micrometer.dynatrace.v2;
 import io.micrometer.common.util.internal.logging.WarnThenDebugLogger;
 
 class WarnThenDebugLoggers {
+
     static class StackTraceLogger extends WarnThenDebugLogger {
+
         public StackTraceLogger() {
             super(StackTraceLogger.class);
         }
+
     }
 
     static class NanGaugeLogger extends WarnThenDebugLogger {
+
         public NanGaugeLogger() {
             super(NanGaugeLogger.class);
         }
+
     }
 
     static class MetadataDiscrepancyLogger extends WarnThenDebugLogger {
+
         public MetadataDiscrepancyLogger() {
             super(MetadataDiscrepancyLogger.class);
         }
+
     }
+
 }

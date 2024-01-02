@@ -72,7 +72,6 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
     private final WarnThenDebugLogger metadataDiscrepancyLogger = new WarnThenDebugLoggers.MetadataDiscrepancyLogger();
 
-
     private MetricLinePreConfiguration preConfiguration;
 
     private boolean skipExport = false;
@@ -419,10 +418,11 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
                         response.code(), getTruncatedBody(response)));
         }
         catch (Throwable throwable) {
-            // the "general" logger logs the message, the WarnThenDebugLogger logs the stack trace.
+            // the "general" logger logs the message, the WarnThenDebugLogger logs the
+            // stack trace.
             logger.warn("Failed metric ingestion: {}", throwable.toString());
-            stackTraceLogger.log(String.format("Stack trace for previous 'Failed metric ingestion' warning log: %s", throwable.getMessage()),
-                    throwable);
+            stackTraceLogger.log(String.format("Stack trace for previous 'Failed metric ingestion' warning log: %s",
+                    throwable.getMessage()), throwable);
         }
     }
 
