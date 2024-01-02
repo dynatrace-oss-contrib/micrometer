@@ -58,6 +58,15 @@ public final class DynatraceTimer extends AbstractTimer implements DynatraceSumm
         }
     }
 
+    /**
+     * @deprecated see {@link DynatraceSummarySnapshotSupport#hasValues()}.
+     */
+    @Override
+    @Deprecated
+    public boolean hasValues() {
+        return summary.getCount() > 0;
+    }
+
     @Override
     public DynatraceSummarySnapshot takeSummarySnapshot() {
         return takeSummarySnapshot(baseTimeUnit());
