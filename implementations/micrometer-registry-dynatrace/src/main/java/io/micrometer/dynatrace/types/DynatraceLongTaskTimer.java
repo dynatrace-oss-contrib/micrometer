@@ -39,6 +39,15 @@ public class DynatraceLongTaskTimer extends DefaultLongTaskTimer implements Dyna
         super(id, clock, baseTimeUnit, distributionStatisticConfig, supportsAggregablePercentiles);
     }
 
+    /**
+     * @deprecated see {@link DynatraceSummarySnapshotSupport#hasValues()}.
+     */
+    @Override
+    @Deprecated
+    public boolean hasValues() {
+        return activeTasks() > 0;
+    }
+
     @Override
     public DynatraceSummarySnapshot takeSummarySnapshot() {
         return takeSummarySnapshot(baseTimeUnit());
