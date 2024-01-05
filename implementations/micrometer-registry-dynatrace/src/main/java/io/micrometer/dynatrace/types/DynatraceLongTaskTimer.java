@@ -15,7 +15,6 @@
  */
 package io.micrometer.dynatrace.types;
 
-import io.micrometer.common.util.internal.logging.WarnThenDebugLogger;
 import io.micrometer.core.instrument.Clock;
 import io.micrometer.core.instrument.distribution.DistributionStatisticConfig;
 import io.micrometer.core.instrument.internal.DefaultLongTaskTimer;
@@ -30,10 +29,6 @@ import java.util.concurrent.TimeUnit;
  * @since 1.12.2
  */
 public class DynatraceLongTaskTimer extends DefaultLongTaskTimer implements DynatraceSummarySnapshotSupport {
-
-    private static final WarnThenDebugLogger LOGGER_CANT_RESET_LONGTASKTIMER = new WarnThenDebugLogger(
-            DynatraceLongTaskTimer.class);
-
     public DynatraceLongTaskTimer(Id id, Clock clock, TimeUnit baseTimeUnit,
             DistributionStatisticConfig distributionStatisticConfig, boolean supportsAggregablePercentiles) {
         super(id, clock, baseTimeUnit, distributionStatisticConfig, supportsAggregablePercentiles);
@@ -65,6 +60,7 @@ public class DynatraceLongTaskTimer extends DefaultLongTaskTimer implements Dyna
         super.forEachActive(sample -> {
             // sample.duration will return -1 if the task is already finished (only
             // currently active tasks are measured).
+            // -1 will be ignored in recordNonNegative.
             summary.recordNonNegative(sample.duration(unit));
         });
 
@@ -83,8 +79,6 @@ public class DynatraceLongTaskTimer extends DefaultLongTaskTimer implements Dyna
         // Therefore, the Snapshot needs to be created from scratch during the export.
         // In takeSummarySnapshot() above, the Summary object is deleted at the end of the
         // method, therefore effectively resetting the snapshot.
-        LOGGER_CANT_RESET_LONGTASKTIMER.log(
-                "Called takeSummarySnapshotAndReset() on a LongTaskTimer, which is automatically reset. Ignoring explicit reset call - use takeSummarySnapshot() instead.");
         return takeSummarySnapshot(unit);
     }
 
