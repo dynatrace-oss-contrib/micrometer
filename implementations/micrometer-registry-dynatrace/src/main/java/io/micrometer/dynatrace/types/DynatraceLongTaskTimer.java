@@ -29,6 +29,7 @@ import java.util.concurrent.TimeUnit;
  * @since 1.12.2
  */
 public class DynatraceLongTaskTimer extends DefaultLongTaskTimer implements DynatraceSummarySnapshotSupport {
+
     public DynatraceLongTaskTimer(Id id, Clock clock, TimeUnit baseTimeUnit,
             DistributionStatisticConfig distributionStatisticConfig, boolean supportsAggregablePercentiles) {
         super(id, clock, baseTimeUnit, distributionStatisticConfig, supportsAggregablePercentiles);
