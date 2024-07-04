@@ -3,6 +3,12 @@ package io.micrometer.dynatrace.types;
 import io.micrometer.common.util.internal.logging.InternalLogLevel;
 import io.micrometer.common.util.internal.logging.InternalLogger;
 
+/**
+ * This filter allows restricting output from WARN and ERROR logs.
+ * The respective WARN and ERROR logs will be logged at INFO level instead.
+ * For all other loglevels (TRACE, DEBUG, INFO), the log message will simply be passed through to the wrapped logger.
+ * This way it is possible to reduce many WARN and ERROR logs without having to turn off the logging completely.
+ */
 public class WarnErrLoggerFilter implements InternalLogger {
     private final InternalLogger delegate;
     private final boolean shouldLogError;
