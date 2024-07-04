@@ -73,7 +73,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         super(config, clock, httpClient);
 
         logger = new WarnErrLoggerFilter(InternalLoggerFactory.getInstance(DynatraceExporterV2.class),
-                !config.logWarningsAtInfo(), !config.logWarningsAtInfo());
+                !config.logWarningsAtInfo(), !config.logErrorsAtInfo());
 
         logger.info("Exporting to endpoint {}", config.uri());
 
