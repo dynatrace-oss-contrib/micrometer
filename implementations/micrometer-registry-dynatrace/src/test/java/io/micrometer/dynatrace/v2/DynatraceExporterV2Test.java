@@ -62,6 +62,7 @@ import static org.mockito.Mockito.*;
  * @author Jonatan Ivanov
  */
 class DynatraceExporterV2Test {
+
     private static final Map<String, String> SEEN_METADATA = new HashMap<>();
 
     private DynatraceConfig config;
@@ -78,7 +79,8 @@ class DynatraceExporterV2Test {
     void setUp() {
         this.config = createDefaultDynatraceConfig();
         this.clock = new MockClock();
-        // Set the clock to something recent so that the Dynatrace library will not complain.
+        // Set the clock to something recent so that the Dynatrace library will not
+        // complain.
         this.clock.add(System.currentTimeMillis(), MILLISECONDS);
         this.httpClient = mock(HttpSender.class);
         this.exporter = createExporter(httpClient);

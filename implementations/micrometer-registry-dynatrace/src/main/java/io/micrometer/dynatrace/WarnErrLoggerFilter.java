@@ -4,14 +4,18 @@ import io.micrometer.common.util.internal.logging.InternalLogLevel;
 import io.micrometer.common.util.internal.logging.InternalLogger;
 
 /**
- * This filter allows restricting output from WARN and ERROR logs.
- * The respective WARN and ERROR logs will be logged at INFO level instead.
- * For all other loglevels (TRACE, DEBUG, INFO), the log message will simply be passed through to the wrapped logger.
- * This way it is possible to reduce many WARN and ERROR logs without having to turn off the logging completely.
+ * This filter allows restricting output from WARN and ERROR logs. The respective WARN and
+ * ERROR logs will be logged at INFO level instead. For all other loglevels (TRACE, DEBUG,
+ * INFO), the log message will simply be passed through to the wrapped logger. This way it
+ * is possible to reduce many WARN and ERROR logs without having to turn off the logging
+ * completely.
  */
 public class WarnErrLoggerFilter implements InternalLogger {
+
     private final InternalLogger delegate;
+
     private final boolean shouldLogError;
+
     private final boolean shouldLogWarning;
 
     public WarnErrLoggerFilter(InternalLogger delegate, boolean shouldLogWarning, boolean shouldLogError) {
@@ -139,7 +143,8 @@ public class WarnErrLoggerFilter implements InternalLogger {
     public void warn(String msg) {
         if (!shouldLogWarning) {
             delegate.info(msg);
-        } else {
+        }
+        else {
             delegate.warn(msg);
         }
     }
@@ -148,7 +153,8 @@ public class WarnErrLoggerFilter implements InternalLogger {
     public void warn(String format, Object arg) {
         if (!shouldLogWarning) {
             delegate.info(format, arg);
-        } else {
+        }
+        else {
             delegate.warn(format, arg);
         }
     }
@@ -157,7 +163,8 @@ public class WarnErrLoggerFilter implements InternalLogger {
     public void warn(String format, Object... arguments) {
         if (!shouldLogWarning) {
             delegate.info(format, arguments);
-        } else {
+        }
+        else {
             delegate.warn(format, arguments);
         }
     }
@@ -166,7 +173,8 @@ public class WarnErrLoggerFilter implements InternalLogger {
     public void warn(String format, Object argA, Object argB) {
         if (!shouldLogWarning) {
             delegate.info(format, argA, argB);
-        } else {
+        }
+        else {
             delegate.warn(format, argA, argB);
         }
     }
@@ -175,7 +183,8 @@ public class WarnErrLoggerFilter implements InternalLogger {
     public void warn(String msg, Throwable t) {
         if (!shouldLogWarning) {
             delegate.info(msg, t);
-        } else {
+        }
+        else {
             delegate.warn(msg, t);
         }
     }
@@ -184,7 +193,8 @@ public class WarnErrLoggerFilter implements InternalLogger {
     public void warn(Throwable t) {
         if (!shouldLogWarning) {
             delegate.info(t);
-        } else {
+        }
+        else {
             delegate.warn(t);
         }
     }
@@ -198,7 +208,8 @@ public class WarnErrLoggerFilter implements InternalLogger {
     public void error(String msg) {
         if (!shouldLogError) {
             delegate.info(msg);
-        } else {
+        }
+        else {
             delegate.error(msg);
         }
     }
@@ -207,7 +218,8 @@ public class WarnErrLoggerFilter implements InternalLogger {
     public void error(String format, Object arg) {
         if (!shouldLogError) {
             delegate.info(format, arg);
-        } else {
+        }
+        else {
             delegate.error(format, arg);
         }
     }
@@ -216,7 +228,8 @@ public class WarnErrLoggerFilter implements InternalLogger {
     public void error(String format, Object argA, Object argB) {
         if (!shouldLogError) {
             delegate.info(format, argA, argB);
-        } else {
+        }
+        else {
             delegate.error(format, argA, argB);
         }
     }
@@ -225,7 +238,8 @@ public class WarnErrLoggerFilter implements InternalLogger {
     public void error(String format, Object... arguments) {
         if (!shouldLogError) {
             delegate.info(format, arguments);
-        } else {
+        }
+        else {
             delegate.error(format, arguments);
         }
     }
@@ -234,7 +248,8 @@ public class WarnErrLoggerFilter implements InternalLogger {
     public void error(String msg, Throwable t) {
         if (!shouldLogError) {
             delegate.info(msg, t);
-        } else {
+        }
+        else {
             delegate.error(msg, t);
         }
     }
@@ -243,7 +258,8 @@ public class WarnErrLoggerFilter implements InternalLogger {
     public void error(Throwable t) {
         if (!shouldLogError) {
             delegate.info(t);
-        } else {
+        }
+        else {
             delegate.error(t);
         }
     }
@@ -257,9 +273,11 @@ public class WarnErrLoggerFilter implements InternalLogger {
     public void log(InternalLogLevel level, String msg) {
         if (level == InternalLogLevel.ERROR) {
             error(msg);
-        } else if (level == InternalLogLevel.WARN) {
+        }
+        else if (level == InternalLogLevel.WARN) {
             warn(msg);
-        } else {
+        }
+        else {
             delegate.log(level, msg);
         }
     }
@@ -268,9 +286,11 @@ public class WarnErrLoggerFilter implements InternalLogger {
     public void log(InternalLogLevel level, String format, Object arg) {
         if (level == InternalLogLevel.ERROR) {
             error(format, arg);
-        } else if (level == InternalLogLevel.WARN) {
+        }
+        else if (level == InternalLogLevel.WARN) {
             warn(format, arg);
-        } else {
+        }
+        else {
             delegate.log(level, format, arg);
         }
     }
@@ -279,9 +299,11 @@ public class WarnErrLoggerFilter implements InternalLogger {
     public void log(InternalLogLevel level, String format, Object argA, Object argB) {
         if (level == InternalLogLevel.ERROR) {
             error(format, argA, argB);
-        } else if (level == InternalLogLevel.WARN) {
+        }
+        else if (level == InternalLogLevel.WARN) {
             warn(format, argA, argB);
-        } else {
+        }
+        else {
             delegate.log(level, format, argA, argB);
         }
     }
@@ -290,9 +312,11 @@ public class WarnErrLoggerFilter implements InternalLogger {
     public void log(InternalLogLevel level, String format, Object... arguments) {
         if (level == InternalLogLevel.ERROR) {
             error(format, arguments);
-        } else if (level == InternalLogLevel.WARN) {
+        }
+        else if (level == InternalLogLevel.WARN) {
             warn(format, arguments);
-        } else {
+        }
+        else {
             delegate.log(level, format, arguments);
         }
     }
@@ -301,9 +325,11 @@ public class WarnErrLoggerFilter implements InternalLogger {
     public void log(InternalLogLevel level, String msg, Throwable t) {
         if (level == InternalLogLevel.ERROR) {
             error(msg, t);
-        } else if (level == InternalLogLevel.WARN) {
+        }
+        else if (level == InternalLogLevel.WARN) {
             warn(msg, t);
-        } else {
+        }
+        else {
             delegate.log(level, msg, t);
         }
     }
@@ -312,10 +338,13 @@ public class WarnErrLoggerFilter implements InternalLogger {
     public void log(InternalLogLevel level, Throwable t) {
         if (level == InternalLogLevel.ERROR) {
             error(t);
-        } else if (level == InternalLogLevel.WARN) {
+        }
+        else if (level == InternalLogLevel.WARN) {
             warn(t);
-        } else {
+        }
+        else {
             delegate.log(level, t);
         }
     }
+
 }

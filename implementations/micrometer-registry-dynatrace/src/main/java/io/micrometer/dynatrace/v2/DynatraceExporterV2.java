@@ -72,7 +72,8 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     public DynatraceExporterV2(DynatraceConfig config, Clock clock, HttpSender httpClient) {
         super(config, clock, httpClient);
 
-        logger = new WarnErrLoggerFilter(InternalLoggerFactory.getInstance(DynatraceExporterV2.class), !config.logWarningsAtInfo(), !config.logWarningsAtInfo());
+        logger = new WarnErrLoggerFilter(InternalLoggerFactory.getInstance(DynatraceExporterV2.class),
+                !config.logWarningsAtInfo(), !config.logWarningsAtInfo());
 
         logger.info("Exporting to endpoint {}", config.uri());
 
@@ -218,7 +219,9 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
                 // collected, but the meter has not been removed from the registry.
                 // NaN's are currently dropped on the Dynatrace side, so dropping them
                 // on the client side here will not change the metrics in Dynatrace.
-                logger.warn("Meter '%s' returned a value of NaN, which will not be exported. This can be a deliberate value or because the weak reference to the backing object expired.", meter.getId().getName());
+                logger.warn(
+                        "Meter '%s' returned a value of NaN, which will not be exported. This can be a deliberate value or because the weak reference to the backing object expired.",
+                        meter.getId().getName());
                 return null;
             }
             MetricLineBuilder.GaugeStep gaugeStep = createTypeStep(meter).gauge();
@@ -510,9 +513,10 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
                 // set for this metric key.
                 if (!previousMetadataLine.equals(metadataLine)) {
                     seenMetadata.put(key, null);
-                    logger.warn("Metadata discrepancy detected:\n" + "original metadata:\t%s\n" + "tried to set new:\t%s\n"
-                        + "Metadata for metric key %s will not be sent.",
-                        previousMetadataLine, metadataLine, key);
+                    logger.warn(
+                            "Metadata discrepancy detected:\n" + "original metadata:\t%s\n" + "tried to set new:\t%s\n"
+                                    + "Metadata for metric key %s will not be sent.",
+                            previousMetadataLine, metadataLine, key);
                 }
             }
             // else:

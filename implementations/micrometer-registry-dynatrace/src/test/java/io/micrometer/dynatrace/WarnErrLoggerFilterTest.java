@@ -17,7 +17,9 @@ import static org.mockito.internal.verification.VerificationModeFactory.times;
 class WarnErrLoggerFilterTest {
 
     private InternalLogger loggerMock;
+
     private Object[] argsArray;
+
     private Throwable throwable;
 
     @BeforeEach
@@ -50,7 +52,6 @@ class WarnErrLoggerFilterTest {
         verify(loggerMock, times(1)).warn(throwable);
         verify(loggerMock, never()).info(anyString());
     }
-
 
     @Test
     void testWarn_whenShouldLogWarnIsFalse_shouldLogWarningAtInfo() {
