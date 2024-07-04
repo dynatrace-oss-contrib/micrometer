@@ -1,4 +1,4 @@
-package io.micrometer.dynatrace.types;
+package io.micrometer.dynatrace;
 
 import io.micrometer.common.util.internal.logging.InternalLogLevel;
 import io.micrometer.common.util.internal.logging.InternalLogger;

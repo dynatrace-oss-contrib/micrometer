@@ -30,7 +30,7 @@ import io.micrometer.dynatrace.AbstractDynatraceExporter;
 import io.micrometer.dynatrace.DynatraceConfig;
 import io.micrometer.dynatrace.types.DynatraceSummarySnapshot;
 import io.micrometer.dynatrace.types.DynatraceSummarySnapshotSupport;
-import io.micrometer.dynatrace.types.WarnErrLoggerFilter;
+import io.micrometer.dynatrace.WarnErrLoggerFilter;
 
 import java.net.MalformedURLException;
 import java.net.URI;
