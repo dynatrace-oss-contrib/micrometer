@@ -73,7 +73,7 @@ public class DynatraceMeterRegistry extends StepMeterRegistry {
             HttpSender httpClient) {
         super(config, clock);
 
-        logger = new WarnErrLoggerFilter(InternalLoggerFactory.getInstance(DynatraceMeterRegistry.class), config.logWarningsAtInfo(), config.logErrorsAtInfo());
+        logger = new WarnErrLoggerFilter(InternalLoggerFactory.getInstance(DynatraceMeterRegistry.class), config.logErrorsAtInfo(), config.logWarningsAtInfo());
 
         useDynatraceSummaryInstruments = config.useDynatraceSummaryInstruments();
 

@@ -8,7 +8,7 @@ public class WarnErrLoggerFilter implements InternalLogger {
     private final boolean shouldLogError;
     private final boolean shouldLogWarning;
 
-    public WarnErrLoggerFilter(InternalLogger delegate, boolean shouldLogError, boolean shouldLogWarning) {
+    public WarnErrLoggerFilter(InternalLogger delegate, boolean shouldLogWarning, boolean shouldLogError) {
         this.delegate = delegate;
         this.shouldLogError = shouldLogError;
         this.shouldLogWarning = shouldLogWarning;
