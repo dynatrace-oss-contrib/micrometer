@@ -21,7 +21,6 @@ import io.micrometer.common.lang.NonNull;
 import io.micrometer.common.util.StringUtils;
 import io.micrometer.common.util.internal.logging.InternalLogger;
 import io.micrometer.common.util.internal.logging.InternalLoggerFactory;
-import io.micrometer.common.util.internal.logging.WarnThenDebugLogger;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.*;
 import io.micrometer.core.instrument.distribution.HistogramSnapshot;
@@ -31,6 +30,7 @@ import io.micrometer.dynatrace.AbstractDynatraceExporter;
 import io.micrometer.dynatrace.DynatraceConfig;
 import io.micrometer.dynatrace.types.DynatraceSummarySnapshot;
 import io.micrometer.dynatrace.types.DynatraceSummarySnapshotSupport;
+import io.micrometer.dynatrace.types.WarnErrLoggerFilter;
 
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -63,14 +63,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     private static final Map<String, String> staticDimensions = Collections.singletonMap("dt.metrics.source",
             "micrometer");
 
-    // Loggers must be non-static for MockLoggerFactory.injectLogger() in tests.
-    private final InternalLogger logger = InternalLoggerFactory.getInstance(DynatraceExporterV2.class);
-
-    private final WarnThenDebugLogger stackTraceLogger = new WarnThenDebugLoggers.StackTraceLogger();
-
-    private final WarnThenDebugLogger nanGaugeLogger = new WarnThenDebugLoggers.NanGaugeLogger();
-
-    private final WarnThenDebugLogger metadataDiscrepancyLogger = new WarnThenDebugLoggers.MetadataDiscrepancyLogger();
+    private final InternalLogger logger;
 
     private MetricLinePreConfiguration preConfiguration;
 
@@ -78,6 +71,8 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
     public DynatraceExporterV2(DynatraceConfig config, Clock clock, HttpSender httpClient) {
         super(config, clock, httpClient);
+
+        logger = new WarnErrLoggerFilter(InternalLoggerFactory.getInstance(DynatraceExporterV2.class), !config.logWarningsAtInfo(), !config.logWarningsAtInfo());
 
         logger.info("Exporting to endpoint {}", config.uri());
 
@@ -223,10 +218,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
                 // collected, but the meter has not been removed from the registry.
                 // NaN's are currently dropped on the Dynatrace side, so dropping them
                 // on the client side here will not change the metrics in Dynatrace.
-
-                nanGaugeLogger.log(() -> String.format(
-                        "Meter '%s' returned a value of NaN, which will not be exported. This can be a deliberate value or because the weak reference to the backing object expired.",
-                        meter.getId().getName()));
+                logger.warn("Meter '%s' returned a value of NaN, which will not be exported. This can be a deliberate value or because the weak reference to the backing object expired.", meter.getId().getName());
                 return null;
             }
             MetricLineBuilder.GaugeStep gaugeStep = createTypeStep(meter).gauge();
@@ -438,8 +430,6 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
             // the "general" logger logs the message, the WarnThenDebugLogger logs the
             // stack trace.
             logger.warn("Failed metric ingestion: {}", throwable.toString());
-            stackTraceLogger.log(String.format("Stack trace for previous 'Failed metric ingestion' warning log: %s",
-                    throwable.getMessage()), throwable);
         }
     }
 
@@ -520,10 +510,9 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
                 // set for this metric key.
                 if (!previousMetadataLine.equals(metadataLine)) {
                     seenMetadata.put(key, null);
-                    metadataDiscrepancyLogger.log(() -> String.format(
-                            "Metadata discrepancy detected:\n" + "original metadata:\t%s\n" + "tried to set new:\t%s\n"
-                                    + "Metadata for metric key %s will not be sent.",
-                            previousMetadataLine, metadataLine, key));
+                    logger.warn("Metadata discrepancy detected:\n" + "original metadata:\t%s\n" + "tried to set new:\t%s\n"
+                        + "Metadata for metric key %s will not be sent.",
+                        previousMetadataLine, metadataLine, key);
                 }
             }
             // else:

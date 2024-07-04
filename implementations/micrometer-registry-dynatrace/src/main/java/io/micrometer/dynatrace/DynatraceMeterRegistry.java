@@ -29,6 +29,7 @@ import io.micrometer.core.ipc.http.HttpUrlConnectionSender;
 import io.micrometer.dynatrace.types.DynatraceDistributionSummary;
 import io.micrometer.dynatrace.types.DynatraceLongTaskTimer;
 import io.micrometer.dynatrace.types.DynatraceTimer;
+import io.micrometer.dynatrace.types.WarnErrLoggerFilter;
 import io.micrometer.dynatrace.v1.DynatraceExporterV1;
 import io.micrometer.dynatrace.v2.DynatraceExporterV2;
 
@@ -56,7 +57,7 @@ public class DynatraceMeterRegistry extends StepMeterRegistry {
 
     private static final ThreadFactory DEFAULT_THREAD_FACTORY = new NamedThreadFactory("dynatrace-metrics-publisher");
 
-    private static final InternalLogger logger = InternalLoggerFactory.getInstance(DynatraceMeterRegistry.class);
+    private final InternalLogger logger;
 
     private final boolean useDynatraceSummaryInstruments;
 
@@ -71,6 +72,8 @@ public class DynatraceMeterRegistry extends StepMeterRegistry {
     private DynatraceMeterRegistry(DynatraceConfig config, Clock clock, ThreadFactory threadFactory,
             HttpSender httpClient) {
         super(config, clock);
+
+        logger = new WarnErrLoggerFilter(InternalLoggerFactory.getInstance(DynatraceMeterRegistry.class), config.logWarningsAtInfo(), config.logErrorsAtInfo());
 
         useDynatraceSummaryInstruments = config.useDynatraceSummaryInstruments();
 
