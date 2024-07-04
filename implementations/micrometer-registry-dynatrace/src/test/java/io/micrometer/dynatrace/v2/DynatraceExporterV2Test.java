@@ -17,9 +17,6 @@ package io.micrometer.dynatrace.v2;
 
 import com.dynatrace.file.util.DynatraceFileBasedConfigurationProvider;
 import io.micrometer.common.lang.Nullable;
-import io.micrometer.common.util.internal.logging.LogEvent;
-import io.micrometer.common.util.internal.logging.MockLogger;
-import io.micrometer.common.util.internal.logging.MockLoggerFactory;
 import io.micrometer.core.Issue;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.*;

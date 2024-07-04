@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 import static org.mockito.internal.verification.VerificationModeFactory.times;
 
@@ -244,11 +244,11 @@ class WarnErrLoggerFilterTest {
         verify(loggerMock, times(1)).isWarnEnabled();
         verify(loggerMock, times(1)).isErrorEnabled();
 
-        assertEquals(loggerMock.isTraceEnabled(), wrapped.isTraceEnabled());
-        assertEquals(loggerMock.isDebugEnabled(), wrapped.isDebugEnabled());
-        assertEquals(loggerMock.isInfoEnabled(), wrapped.isInfoEnabled());
-        assertEquals(loggerMock.isWarnEnabled(), wrapped.isWarnEnabled());
-        assertEquals(loggerMock.isErrorEnabled(), wrapped.isErrorEnabled());
+        assertThat(loggerMock.isTraceEnabled()).isEqualTo(wrapped.isTraceEnabled());
+        assertThat(loggerMock.isDebugEnabled()).isEqualTo(wrapped.isDebugEnabled());
+        assertThat(loggerMock.isInfoEnabled()).isEqualTo(wrapped.isInfoEnabled());
+        assertThat(loggerMock.isWarnEnabled()).isEqualTo(wrapped.isWarnEnabled());
+        assertThat(loggerMock.isErrorEnabled()).isEqualTo(wrapped.isErrorEnabled());
     }
 
     @Test
@@ -267,11 +267,11 @@ class WarnErrLoggerFilterTest {
         verify(loggerMock, times(1)).isEnabled(InternalLogLevel.WARN);
         verify(loggerMock, times(1)).isEnabled(InternalLogLevel.ERROR);
 
-        assertEquals(loggerMock.isEnabled(InternalLogLevel.TRACE), wrapped.isEnabled(InternalLogLevel.TRACE));
-        assertEquals(loggerMock.isEnabled(InternalLogLevel.DEBUG), wrapped.isEnabled(InternalLogLevel.DEBUG));
-        assertEquals(loggerMock.isEnabled(InternalLogLevel.INFO), wrapped.isEnabled(InternalLogLevel.INFO));
-        assertEquals(loggerMock.isEnabled(InternalLogLevel.WARN), wrapped.isEnabled(InternalLogLevel.WARN));
-        assertEquals(loggerMock.isEnabled(InternalLogLevel.ERROR), wrapped.isEnabled(InternalLogLevel.ERROR));
+        assertThat(loggerMock.isEnabled(InternalLogLevel.TRACE)).isEqualTo(wrapped.isEnabled(InternalLogLevel.TRACE));
+        assertThat(loggerMock.isEnabled(InternalLogLevel.DEBUG)).isEqualTo(wrapped.isEnabled(InternalLogLevel.DEBUG));
+        assertThat(loggerMock.isEnabled(InternalLogLevel.INFO)).isEqualTo(wrapped.isEnabled(InternalLogLevel.INFO));
+        assertThat(loggerMock.isEnabled(InternalLogLevel.WARN)).isEqualTo(wrapped.isEnabled(InternalLogLevel.WARN));
+        assertThat(loggerMock.isEnabled(InternalLogLevel.ERROR)).isEqualTo(wrapped.isEnabled(InternalLogLevel.ERROR));
     }
 
     @Test
@@ -282,7 +282,7 @@ class WarnErrLoggerFilterTest {
 
         verify(loggerMock, times(1)).name();
 
-        assertEquals(loggerMock.name(), wrapped.name());
+        assertThat(loggerMock.name()).isEqualTo(wrapped.name());
     }
 
     private void useAllWarnMethods(InternalLogger logger) {
