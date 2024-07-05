@@ -176,7 +176,7 @@ public interface DynatraceConfig extends StepRegistryConfig {
         if (apiVersion() == V1) {
             return false;
         }
-        return getBoolean(this, "logWarningsAtInfo").orElse(true);
+        return getBoolean(this, "logWarningsAtInfo").orElse(false);
     }
 
     /**
@@ -190,7 +190,7 @@ public interface DynatraceConfig extends StepRegistryConfig {
         if (apiVersion() == V1) {
             return false;
         }
-        return getBoolean(this, "logErrorsAtInfo").orElse(true);
+        return getBoolean(this, "logErrorsAtInfo").orElse(false);
     }
 
     @Override
