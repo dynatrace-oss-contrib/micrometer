@@ -80,10 +80,14 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         super(config, clock, httpClient);
 
         logger = new WarnErrLoggerFilter(InternalLoggerFactory.getInstance(DynatraceExporterV2.class),
-            config.logWarningsAtInfo(), config.logErrorsAtInfo());
-        stackTraceLogger = new DynatraceWarnThenDebugLogger("io.micrometer.dynatrace.v2.WarnThenDebugLoggers.StackTraceLogger", config.logWarningsAtInfo());
-        nanGaugeLogger = new DynatraceWarnThenDebugLogger("io.micrometer.dynatrace.v2.WarnThenDebugLoggers.NanGaugeLogger", config.logWarningsAtInfo());
-        metadataDiscrepancyLogger = new DynatraceWarnThenDebugLogger("io.micrometer.dynatrace.v2.WarnThenDebugLoggers.MetadataDiscrepancyLogger", config.logWarningsAtInfo());
+                config.logWarningsAtInfo(), config.logErrorsAtInfo());
+        stackTraceLogger = new DynatraceWarnThenDebugLogger(
+                "io.micrometer.dynatrace.v2.WarnThenDebugLoggers.StackTraceLogger", config.logWarningsAtInfo());
+        nanGaugeLogger = new DynatraceWarnThenDebugLogger(
+                "io.micrometer.dynatrace.v2.WarnThenDebugLoggers.NanGaugeLogger", config.logWarningsAtInfo());
+        metadataDiscrepancyLogger = new DynatraceWarnThenDebugLogger(
+                "io.micrometer.dynatrace.v2.WarnThenDebugLoggers.MetadataDiscrepancyLogger",
+                config.logWarningsAtInfo());
 
         logger.info("Exporting to endpoint {}", config.uri());
 
@@ -230,8 +234,8 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
                 // NaN's are currently dropped on the Dynatrace side, so dropping them
                 // on the client side here will not change the metrics in Dynatrace.
                 nanGaugeLogger.log(() -> String.format(
-                    "Meter '%s' returned a value of NaN, which will not be exported. This can be a deliberate value or because the weak reference to the backing object expired.",
-                    meter.getId().getName()));
+                        "Meter '%s' returned a value of NaN, which will not be exported. This can be a deliberate value or because the weak reference to the backing object expired.",
+                        meter.getId().getName()));
                 return null;
             }
             MetricLineBuilder.GaugeStep gaugeStep = createTypeStep(meter).gauge();
@@ -526,9 +530,9 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
                 if (!previousMetadataLine.equals(metadataLine)) {
                     seenMetadata.put(key, null);
                     metadataDiscrepancyLogger.log(() -> String.format(
-                        "Metadata discrepancy detected:\n" + "original metadata:\t%s\n" + "tried to set new:\t%s\n"
-                            + "Metadata for metric key %s will not be sent.",
-                        previousMetadataLine, metadataLine, key));
+                            "Metadata discrepancy detected:\n" + "original metadata:\t%s\n" + "tried to set new:\t%s\n"
+                                    + "Metadata for metric key %s will not be sent.",
+                            previousMetadataLine, metadataLine, key));
                 }
             }
             // else:
