@@ -35,6 +35,10 @@ public class WarnThenDebugLogger {
         this.logger = InternalLoggerFactory.getInstance(clazz);
     }
 
+    protected WarnThenDebugLogger(InternalLogger logger) {
+        this.logger = logger;
+    }
+
     /**
      * Creates a new {@code WarnThenDebugLogger} instance with the specified name.
      * @param name logger name
