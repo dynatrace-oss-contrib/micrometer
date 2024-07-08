@@ -29,7 +29,6 @@ import io.micrometer.core.ipc.http.HttpUrlConnectionSender;
 import io.micrometer.dynatrace.types.DynatraceDistributionSummary;
 import io.micrometer.dynatrace.types.DynatraceLongTaskTimer;
 import io.micrometer.dynatrace.types.DynatraceTimer;
-import io.micrometer.dynatrace.WarnErrLoggerFilter;
 import io.micrometer.dynatrace.v1.DynatraceExporterV1;
 import io.micrometer.dynatrace.v2.DynatraceExporterV2;
 
@@ -74,7 +73,7 @@ public class DynatraceMeterRegistry extends StepMeterRegistry {
         super(config, clock);
 
         logger = new WarnErrLoggerFilter(InternalLoggerFactory.getInstance(DynatraceMeterRegistry.class),
-                !config.logWarningsAtInfo(), !config.logErrorsAtInfo());
+            config.logWarningsAtInfo(), config.logErrorsAtInfo());
 
         useDynatraceSummaryInstruments = config.useDynatraceSummaryInstruments();
 
