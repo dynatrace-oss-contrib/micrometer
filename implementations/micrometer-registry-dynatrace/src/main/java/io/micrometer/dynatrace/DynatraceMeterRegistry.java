@@ -29,6 +29,7 @@ import io.micrometer.core.ipc.http.HttpUrlConnectionSender;
 import io.micrometer.dynatrace.types.DynatraceDistributionSummary;
 import io.micrometer.dynatrace.types.DynatraceLongTaskTimer;
 import io.micrometer.dynatrace.types.DynatraceTimer;
+import io.micrometer.dynatrace.WarnErrLoggerFilter;
 import io.micrometer.dynatrace.v1.DynatraceExporterV1;
 import io.micrometer.dynatrace.v2.DynatraceExporterV2;
 

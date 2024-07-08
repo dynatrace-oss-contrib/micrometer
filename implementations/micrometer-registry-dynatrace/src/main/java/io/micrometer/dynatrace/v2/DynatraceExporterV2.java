@@ -21,6 +21,7 @@ import io.micrometer.common.lang.NonNull;
 import io.micrometer.common.util.StringUtils;
 import io.micrometer.common.util.internal.logging.InternalLogger;
 import io.micrometer.common.util.internal.logging.InternalLoggerFactory;
+import io.micrometer.common.util.internal.logging.WarnThenDebugLogger;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.*;
 import io.micrometer.core.instrument.distribution.HistogramSnapshot;
@@ -63,7 +64,14 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     private static final Map<String, String> staticDimensions = Collections.singletonMap("dt.metrics.source",
             "micrometer");
 
+    // Loggers must be non-static for MockLoggerFactory.injectLogger() in tests.
     private final InternalLogger logger;
+
+    private final WarnThenDebugLogger stackTraceLogger = new WarnThenDebugLoggers.StackTraceLogger();
+
+    private final WarnThenDebugLogger nanGaugeLogger = new WarnThenDebugLoggers.NanGaugeLogger();
+
+    private final WarnThenDebugLogger metadataDiscrepancyLogger = new WarnThenDebugLoggers.MetadataDiscrepancyLogger();
 
     private MetricLinePreConfiguration preConfiguration;
 
@@ -433,6 +441,8 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
             // the "general" logger logs the message, the WarnThenDebugLogger logs the
             // stack trace.
             logger.warn("Failed metric ingestion: {}", throwable.toString());
+            stackTraceLogger.log(String.format("Stack trace for previous 'Failed metric ingestion' warning log: %s",
+                    throwable.getMessage()), throwable);
         }
     }
 
