@@ -54,8 +54,8 @@ class WarnErrLoggerFilterTest {
     }
 
     @Test
-    void testWarn_whenShouldLogWarnIsTrue_shouldLogWarningAtWarn() {
-        WarnErrLoggerFilter wrapped = new WarnErrLoggerFilter(loggerMock, true, true);
+    void testWarn_whenLogWarnAsInfoIsFalse_shouldLogWarningAtWarn() {
+        WarnErrLoggerFilter wrapped = new WarnErrLoggerFilter(loggerMock, false, false);
 
         useAllWarnMethods(wrapped);
 
@@ -69,8 +69,8 @@ class WarnErrLoggerFilterTest {
     }
 
     @Test
-    void testWarn_whenShouldLogWarnIsFalse_shouldLogWarningAtInfo() {
-        WarnErrLoggerFilter wrapped = new WarnErrLoggerFilter(loggerMock, false, false);
+    void testWarn_whenLogWarnAsInfoIsTue_shouldLogWarningAtInfo() {
+        WarnErrLoggerFilter wrapped = new WarnErrLoggerFilter(loggerMock, true, true);
 
         useAllWarnMethods(wrapped);
 
@@ -84,8 +84,8 @@ class WarnErrLoggerFilterTest {
     }
 
     @Test
-    void testError_whenShouldLogErrorIsTrue_shouldLogErrorAtError() {
-        WarnErrLoggerFilter wrapped = new WarnErrLoggerFilter(loggerMock, true, true);
+    void testError_whenLogErrorAsInfoIsFalse_shouldLogErrorAtError() {
+        WarnErrLoggerFilter wrapped = new WarnErrLoggerFilter(loggerMock, false, false);
 
         useAllErrorMethods(wrapped);
 
@@ -99,8 +99,8 @@ class WarnErrLoggerFilterTest {
     }
 
     @Test
-    void testError_whenShouldLogErrorIsFalse_shouldLogErrorAtInfo() {
-        WarnErrLoggerFilter wrapped = new WarnErrLoggerFilter(loggerMock, false, false);
+    void testError_whenLogErrorAsInfoIsTrue_shouldLogErrorAtInfo() {
+        WarnErrLoggerFilter wrapped = new WarnErrLoggerFilter(loggerMock, true, true);
 
         useAllErrorMethods(wrapped);
 
@@ -114,8 +114,8 @@ class WarnErrLoggerFilterTest {
     }
 
     @Test
-    void testLog_whenShouldLogErrorIsTrue_shouldLogErrorAtError() {
-        WarnErrLoggerFilter wrapped = new WarnErrLoggerFilter(loggerMock, true, true);
+    void testLog_whenLogErrorAsInfoIsFalse_shouldLogErrorAtError() {
+        WarnErrLoggerFilter wrapped = new WarnErrLoggerFilter(loggerMock, false, false);
 
         useAllLogMethods(wrapped, InternalLogLevel.ERROR);
 
@@ -129,8 +129,8 @@ class WarnErrLoggerFilterTest {
     }
 
     @Test
-    void testLog_whenShouldLogErrorIsFalse_shouldLogErrorAtInfo() {
-        WarnErrLoggerFilter wrapped = new WarnErrLoggerFilter(loggerMock, false, false);
+    void testLog_whenLogErrorAsInfoIsTrue_shouldLogErrorAtInfo() {
+        WarnErrLoggerFilter wrapped = new WarnErrLoggerFilter(loggerMock, true, true);
 
         useAllLogMethods(wrapped, InternalLogLevel.ERROR);
 
@@ -144,8 +144,8 @@ class WarnErrLoggerFilterTest {
     }
 
     @Test
-    void testLog_whenShouldLogWarnIsTrue_shouldLogWarnAtWarn() {
-        WarnErrLoggerFilter wrapped = new WarnErrLoggerFilter(loggerMock, true, true);
+    void testLog_whenLogWarnAsInfoIsFalse_shouldLogWarnAtWarn() {
+        WarnErrLoggerFilter wrapped = new WarnErrLoggerFilter(loggerMock, false, false);
 
         useAllLogMethods(wrapped, InternalLogLevel.WARN);
 
@@ -159,8 +159,8 @@ class WarnErrLoggerFilterTest {
     }
 
     @Test
-    void testLog_whenShouldLogWarnIsFalse_shouldLogWarnAtInfo() {
-        WarnErrLoggerFilter wrapped = new WarnErrLoggerFilter(loggerMock, false, false);
+    void testLog_whenLogWarnAsInfoIsTue_shouldLogWarnAtInfo() {
+        WarnErrLoggerFilter wrapped = new WarnErrLoggerFilter(loggerMock, true, true);
 
         useAllLogMethods(wrapped, InternalLogLevel.WARN);
 
@@ -175,7 +175,7 @@ class WarnErrLoggerFilterTest {
 
     @Test
     void test_nonErrorOrWarnMethods_passThroughToDelegate() {
-        WarnErrLoggerFilter wrapped = new WarnErrLoggerFilter(loggerMock, false, false);
+        WarnErrLoggerFilter wrapped = new WarnErrLoggerFilter(loggerMock, true, true);
 
         wrapped.trace("test");
         wrapped.trace("te%s", "st");
@@ -222,7 +222,7 @@ class WarnErrLoggerFilterTest {
 
     @Test
     void test_logMethods_passThroughToDelegate() {
-        WarnErrLoggerFilter wrapped = new WarnErrLoggerFilter(loggerMock, false, false);
+        WarnErrLoggerFilter wrapped = new WarnErrLoggerFilter(loggerMock, true, true);
 
         useAllLogMethods(wrapped, InternalLogLevel.TRACE);
         useAllLogMethods(wrapped, InternalLogLevel.DEBUG);
@@ -245,7 +245,7 @@ class WarnErrLoggerFilterTest {
 
     @Test
     void test_isLevelEnabled_passThroughToDelegate() {
-        WarnErrLoggerFilter wrapped = new WarnErrLoggerFilter(loggerMock, false, false);
+        WarnErrLoggerFilter wrapped = new WarnErrLoggerFilter(loggerMock, true, true);
 
         wrapped.isTraceEnabled();
         wrapped.isDebugEnabled();
@@ -268,7 +268,7 @@ class WarnErrLoggerFilterTest {
 
     @Test
     void test_isEnabled_passThroughToDelegate() {
-        WarnErrLoggerFilter wrapped = new WarnErrLoggerFilter(loggerMock, false, false);
+        WarnErrLoggerFilter wrapped = new WarnErrLoggerFilter(loggerMock, true, true);
 
         wrapped.isEnabled(InternalLogLevel.TRACE);
         wrapped.isEnabled(InternalLogLevel.DEBUG);
@@ -291,7 +291,7 @@ class WarnErrLoggerFilterTest {
 
     @Test
     void test_assertNameIsTakenFromDelegate() {
-        WarnErrLoggerFilter wrapped = new WarnErrLoggerFilter(loggerMock, false, false);
+        WarnErrLoggerFilter wrapped = new WarnErrLoggerFilter(loggerMock, true, true);
 
         wrapped.name();
 

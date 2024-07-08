@@ -29,14 +29,14 @@ public class WarnErrLoggerFilter implements InternalLogger {
 
     private final InternalLogger delegate;
 
-    private final boolean shouldLogError;
+    private final boolean logErrorsAtInfo;
 
-    private final boolean shouldLogWarning;
+    private final boolean logWarningsAtInfo;
 
-    public WarnErrLoggerFilter(InternalLogger delegate, boolean shouldLogWarning, boolean shouldLogError) {
+    public WarnErrLoggerFilter(InternalLogger delegate, boolean logWarningsAtInfo, boolean logErrorsAtInfo) {
         this.delegate = delegate;
-        this.shouldLogError = shouldLogError;
-        this.shouldLogWarning = shouldLogWarning;
+        this.logErrorsAtInfo = logErrorsAtInfo;
+        this.logWarningsAtInfo = logWarningsAtInfo;
     }
 
     @Override
@@ -156,7 +156,7 @@ public class WarnErrLoggerFilter implements InternalLogger {
 
     @Override
     public void warn(String msg) {
-        if (!shouldLogWarning) {
+        if (logWarningsAtInfo) {
             delegate.info(msg);
         }
         else {
@@ -166,7 +166,7 @@ public class WarnErrLoggerFilter implements InternalLogger {
 
     @Override
     public void warn(String format, Object arg) {
-        if (!shouldLogWarning) {
+        if (logWarningsAtInfo) {
             delegate.info(format, arg);
         }
         else {
@@ -176,7 +176,7 @@ public class WarnErrLoggerFilter implements InternalLogger {
 
     @Override
     public void warn(String format, Object... arguments) {
-        if (!shouldLogWarning) {
+        if (logWarningsAtInfo) {
             delegate.info(format, arguments);
         }
         else {
@@ -186,7 +186,7 @@ public class WarnErrLoggerFilter implements InternalLogger {
 
     @Override
     public void warn(String format, Object argA, Object argB) {
-        if (!shouldLogWarning) {
+        if (logWarningsAtInfo) {
             delegate.info(format, argA, argB);
         }
         else {
@@ -196,7 +196,7 @@ public class WarnErrLoggerFilter implements InternalLogger {
 
     @Override
     public void warn(String msg, Throwable t) {
-        if (!shouldLogWarning) {
+        if (logWarningsAtInfo) {
             delegate.info(msg, t);
         }
         else {
@@ -206,7 +206,7 @@ public class WarnErrLoggerFilter implements InternalLogger {
 
     @Override
     public void warn(Throwable t) {
-        if (!shouldLogWarning) {
+        if (logWarningsAtInfo) {
             delegate.info(t);
         }
         else {
@@ -221,7 +221,7 @@ public class WarnErrLoggerFilter implements InternalLogger {
 
     @Override
     public void error(String msg) {
-        if (!shouldLogError) {
+        if (logErrorsAtInfo) {
             delegate.info(msg);
         }
         else {
@@ -231,7 +231,7 @@ public class WarnErrLoggerFilter implements InternalLogger {
 
     @Override
     public void error(String format, Object arg) {
-        if (!shouldLogError) {
+        if (logErrorsAtInfo) {
             delegate.info(format, arg);
         }
         else {
@@ -241,7 +241,7 @@ public class WarnErrLoggerFilter implements InternalLogger {
 
     @Override
     public void error(String format, Object argA, Object argB) {
-        if (!shouldLogError) {
+        if (logErrorsAtInfo) {
             delegate.info(format, argA, argB);
         }
         else {
@@ -251,7 +251,7 @@ public class WarnErrLoggerFilter implements InternalLogger {
 
     @Override
     public void error(String format, Object... arguments) {
-        if (!shouldLogError) {
+        if (logErrorsAtInfo) {
             delegate.info(format, arguments);
         }
         else {
@@ -261,7 +261,7 @@ public class WarnErrLoggerFilter implements InternalLogger {
 
     @Override
     public void error(String msg, Throwable t) {
-        if (!shouldLogError) {
+        if (logErrorsAtInfo) {
             delegate.info(msg, t);
         }
         else {
@@ -271,7 +271,7 @@ public class WarnErrLoggerFilter implements InternalLogger {
 
     @Override
     public void error(Throwable t) {
-        if (!shouldLogError) {
+        if (logErrorsAtInfo) {
             delegate.info(t);
         }
         else {
