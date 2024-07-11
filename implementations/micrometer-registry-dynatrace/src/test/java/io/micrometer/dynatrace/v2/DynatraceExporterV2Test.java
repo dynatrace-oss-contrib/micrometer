@@ -75,7 +75,8 @@ class DynatraceExporterV2Test {
     void setUp() {
         this.config = createDefaultDynatraceConfig();
         this.clock = new MockClock();
-        // Set the clock to something recent so that the Dynatrace library will not complain.
+        // Set the clock to something recent so that the Dynatrace library will not
+        // complain.
         this.clock.add(System.currentTimeMillis(), MILLISECONDS);
         this.httpClient = mock(HttpSender.class);
 
