@@ -30,6 +30,7 @@ import io.micrometer.dynatrace.AbstractDynatraceExporter;
 import io.micrometer.dynatrace.DynatraceConfig;
 import io.micrometer.dynatrace.types.DynatraceSummarySnapshot;
 import io.micrometer.dynatrace.types.DynatraceSummarySnapshotSupport;
+import io.micrometer.dynatrace.util.UnitStringMapper;
 
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -201,6 +202,11 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     Stream<String> toGaugeLine(Meter meter, Map<String, String> seenMetadata) {
         return toMeterLine(meter, (theMeter, measurement) -> createGaugeLine(theMeter, seenMetadata, measurement));
     }
+//
+//    Stream<String> toTimeGaugeLine(Meter meter, Map<String, String> seenMetadata) {
+//        ((TimeGauge)meter).baseTimeUnit();
+//        meter.getId().getBaseUnit();
+//    }
 
     private String createGaugeLine(Meter meter, Map<String, String> seenMetadata, Measurement measurement) {
         try {
@@ -478,7 +484,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
     }
 
     private MetricLineBuilder.MetadataStep enrichMetadata(MetricLineBuilder.MetadataStep metadataStep, Meter meter) {
-        return metadataStep.description(meter.getId().getDescription()).unit(meter.getId().getBaseUnit());
+        return metadataStep.description(meter.getId().getDescription()).unit(UnitStringMapper.mapUnitIfNeeded(meter.getId().getBaseUnit()));
     }
 
     /**
