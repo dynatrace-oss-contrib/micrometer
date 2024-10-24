@@ -201,7 +201,7 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         }
 
         logger.info(
-                "Export finished. Generated {} request(s) totalling {} metric lines and {} metadata lines. Of those, {} lines were successfully ingested, {} lines failed to ingest. Target URI: {}.",
+                "Export finished. Generated {} request(s) totalling {} metric lines and {} metadata lines. Of those, {} lines were successfully ingested, {} lines failed to ingest. Target URI: {}",
                 cntRequests.get(), cntMetricLines.get(), cntMetadataLines.get(), cntLinesOk.get(), cntLinesFailed.get(),
                 config.uri());
     }
