@@ -162,8 +162,8 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
 
         AtomicInteger cntLinesOk = new AtomicInteger(0);
         AtomicInteger cntLinesFailed = new AtomicInteger(0);
-        AtomicInteger cntMetricLines = new AtomicInteger(0);
         AtomicInteger cntRequests = new AtomicInteger(0);
+        AtomicInteger cntMetricLines = new AtomicInteger(0);
         AtomicInteger cntMetadataLines = new AtomicInteger(0);
 
         for (Meter meter : meters) {
