@@ -421,68 +421,6 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         return StreamSupport.stream(iterable.spliterator(), false);
     }
 
-    private void send(List<String> metricLines) {
-        String endpoint = config.uri();
-        if (!isValidEndpoint(endpoint)) {
-            logger.warn("Invalid endpoint, skipping export... ({})", endpoint);
-            return;
-        }
-        try {
-            int lineCount = metricLines.size();
-            logger.debug("Sending {} lines to {}", lineCount, endpoint);
-
-            String body = String.join("\n", metricLines);
-            logger.debug("Sending lines:\n{}", body);
-
-            HttpSender.Request.Builder requestBuilder = httpClient.post(endpoint);
-            if (!shouldIgnoreToken(config)) {
-                requestBuilder.withHeader("Authorization", "Api-Token " + config.apiToken());
-            }
-
-            requestBuilder.withHeader("User-Agent", "micrometer")
-                .withPlainText(body)
-                .send()
-                .onSuccess(response -> handleSuccess(lineCount, response))
-                .onError(response -> {
-                    logger.info("Failed metric ingestion: Error Code={}, Response Body={}", response.code(),
-                            getTruncatedBody(response));
-                });
-        }
-        catch (Throwable throwable) {
-            // logging at info to not drown out warnings/errors from business code.
-            logger.info("Failed metric ingestion: {}", throwable.toString());
-        }
-    }
-
-    private String getTruncatedBody(HttpSender.Response response) {
-        return StringUtils.truncate(response.body(), 1_000, " (truncated)");
-    }
-
-    private void handleSuccess(int totalSent, HttpSender.Response response) {
-        if (response.code() == 202) {
-            if (IS_NULL_ERROR_RESPONSE.matcher(response.body()).find()) {
-                Matcher linesOkMatchResult = EXTRACT_LINES_OK.matcher(response.body());
-                Matcher linesInvalidMatchResult = EXTRACT_LINES_INVALID.matcher(response.body());
-                if (linesOkMatchResult.find() && linesInvalidMatchResult.find()) {
-                    logger.debug("Sent {} metric lines, linesOk: {}, linesInvalid: {}.", totalSent,
-                            linesOkMatchResult.group(1), linesInvalidMatchResult.group(1));
-                }
-                else {
-                    logger.warn("Unable to parse response: {}", getTruncatedBody(response));
-                }
-            }
-            else {
-                logger.warn("Unable to parse response: {}", getTruncatedBody(response));
-            }
-        }
-        else {
-            // common pitfall if URI is supplied in V1 format (without endpoint path)
-            logger.error(
-                    "Expected status code 202, got {}.\nResponse Body={}\nDid you specify the ingest path (e.g.: /api/v2/metrics/ingest)?",
-                    response.code(), getTruncatedBody(response));
-        }
-    }
-
     /**
      * The metadata should be exported if it is enabled from config and at least one of
      * unit or description are set.
