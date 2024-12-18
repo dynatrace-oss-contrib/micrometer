@@ -165,6 +165,21 @@ public interface DynatraceConfig extends StepRegistryConfig {
         return getBoolean(this, "exportMeterMetadata").orElse(true);
     }
 
+    /**
+     * The maximum payload size for requests exported by the
+     * {@link io.micrometer.dynatrace.v2.DynatraceExporterV2}. The Dynatrace API accepts
+     * messages with a payload size of up to 1MB, which is the default of this method.
+     * Metrics will be exported in chunks if the requests would exceed the 1MB size limit.
+     * @return the maximum size in Bytes that requests can reach before they are sent to
+     * Dynatrace.
+     */
+    default int maxPayloadSizeBytes() {
+        if (apiVersion() == V1) {
+            return -1;
+        }
+        return getInteger(this, "maxPayloadSizeBytes").orElse(1048576);
+    }
+
     @Override
     default Validated<?> validate() {
         return checkAll(this, config -> StepRegistryConfig.validate(config),

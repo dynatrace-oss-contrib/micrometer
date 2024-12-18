@@ -40,7 +40,6 @@ import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -99,6 +98,90 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
         }
     }
 
+    private Map<String, String> enrichWithMetricsSourceDimensions(Map<String, String> defaultDimensions) {
+        LinkedHashMap<String, String> orderedDimensions = new LinkedHashMap<>(defaultDimensions);
+        orderedDimensions.putAll(STATIC_DIMENSIONS);
+        return orderedDimensions;
+    }
+
+    /**
+     * Export to the Dynatrace v2 endpoint. Measurements that contain NaN or Infinite
+     * values, as well as serialized data points that exceed length limits imposed by the
+     * API will be dropped and not exported. If the number of serialized data points
+     * exceeds the maximum number of allowed data points or the maximum payload size of
+     * the API, metric lines will be sent in multiple requests.
+     * @param meters A list of {@link Meter Meters} that are serialized as one or more
+     * metric lines.
+     */
+    @Override
+    public void export(@NonNull List<Meter> meters) {
+        if (skipExport) {
+            logger.warn("Dynatrace configuration is invalid, skipping export.");
+            return;
+        }
+
+        if (meters.isEmpty()) {
+            logger.debug("Meter list is empty, nothing to export. Did you create any meters?");
+            return;
+        }
+
+        String endpoint = config.uri();
+        if (!isValidEndpoint(endpoint)) {
+            logger.warn("Invalid endpoint, skipping export... ({})", endpoint);
+            return;
+        }
+
+        // token is not needed when exporting to the local OneAgent endpoint.
+        // token needs to be read on each export, can change during the runtime of the
+        // process (token rotation)
+        String token = null;
+        if (!shouldIgnoreToken(config)) {
+            token = config.apiToken();
+        }
+
+        // export buffer should be created new every export since URI and token can change
+        // during the runtime of the process.
+        DynatraceExporterV2SendBuffer exportBuffer = new DynatraceExporterV2SendBuffer(endpoint, token, httpClient,
+                config.batchSize(), config.maxPayloadSizeBytes());
+
+        Map<String, String> seenMetadata = null;
+        if (config.exportMeterMetadata()) {
+            seenMetadata = new HashMap<>();
+        }
+
+        for (Meter meter : meters) {
+            // Lines that are too long to be ingested into Dynatrace, as well as lines
+            // that contain NaN or Inf values are not returned from "toMetricLines",
+            // and are therefore dropped.
+            Stream<String> metricLines = toMetricLines(meter, seenMetadata);
+
+            metricLines.forEach(line -> {
+                exportBuffer.putMetricLine(line);
+            });
+        }
+
+        // if the config to export metadata is turned off, the seenMetadata map will be
+        // null.
+        if (seenMetadata != null) {
+            seenMetadata.values().forEach(line -> {
+                if (line != null) {
+                    exportBuffer.putMetricLine(line);
+                }
+            });
+        }
+
+        // push remaining lines, if any.
+        exportBuffer.flush();
+
+        if (logger.isInfoEnabled()) {
+            DynatraceExporterV2SendBuffer.ExportStatistics exportStatistics = exportBuffer.getExportStatistics();
+            logger.info(
+                    "Export finished. requests sent: {}; requests ok: {}; lines sent: {}; lines ok: {}; lines invalid: {}",
+                    exportStatistics.getRequestsSent(), exportStatistics.getRequestsOk(),
+                    exportStatistics.getLinesSent(), exportStatistics.getLinesOk(), exportStatistics.getLinesInvalid());
+        }
+    }
+
     private boolean isValidEndpoint(String uri) {
         try {
             // noinspection ResultOfMethodCallIgnored
@@ -122,77 +205,6 @@ public final class DynatraceExporterV2 extends AbstractDynatraceExporter {
             return true;
         }
         return false;
-    }
-
-    private Map<String, String> enrichWithMetricsSourceDimensions(Map<String, String> defaultDimensions) {
-        LinkedHashMap<String, String> orderedDimensions = new LinkedHashMap<>(defaultDimensions);
-        orderedDimensions.putAll(STATIC_DIMENSIONS);
-        return orderedDimensions;
-    }
-
-    /**
-     * Export to the Dynatrace v2 endpoint. Measurements that contain NaN or Infinite
-     * values, as well as serialized data points that exceed length limits imposed by the
-     * API will be dropped and not exported. If the number of serialized data points
-     * exceeds the maximum number of allowed data points per request they will be sent in
-     * chunks.
-     * @param meters A list of {@link Meter Meters} that are serialized as one or more
-     * metric lines.
-     */
-    @Override
-    public void export(@NonNull List<Meter> meters) {
-        if (skipExport) {
-            logger.warn("Dynatrace configuration is invalid, skipping export.");
-            return;
-        }
-
-        if (meters.isEmpty()) {
-            logger.debug("Meter list is empty, nothing to export. Did you create any meters?");
-            return;
-        }
-
-        Map<String, String> seenMetadata = null;
-        if (config.exportMeterMetadata()) {
-            seenMetadata = new HashMap<>();
-        }
-
-        int partitionSize = Math.min(config.batchSize(), DynatraceMetricApiConstants.getPayloadLinesLimit());
-        List<String> batch = new ArrayList<>(partitionSize);
-
-        for (Meter meter : meters) {
-            // Lines that are too long to be ingested into Dynatrace, as well as lines
-            // that contain NaN or Inf values are not returned from "toMetricLines",
-            // and are therefore dropped.
-            Stream<String> metricLines = toMetricLines(meter, seenMetadata);
-
-            metricLines.forEach(line -> {
-                batch.add(line);
-                sendBatchIfFull(batch, partitionSize);
-            });
-        }
-
-        // if the config to export metadata is turned off, the seenMetadata map will be
-        // null.
-        if (seenMetadata != null) {
-            seenMetadata.values().forEach(line -> {
-                if (line != null) {
-                    batch.add(line);
-                    sendBatchIfFull(batch, partitionSize);
-                }
-            });
-        }
-
-        // push remaining lines if any.
-        if (!batch.isEmpty()) {
-            send(batch);
-        }
-    }
-
-    private void sendBatchIfFull(List<String> batch, int partitionSize) {
-        if (batch.size() == partitionSize) {
-            send(batch);
-            batch.clear();
-        }
     }
 
     private Stream<String> toMetricLines(Meter meter, Map<String, String> seenMetadata) {
