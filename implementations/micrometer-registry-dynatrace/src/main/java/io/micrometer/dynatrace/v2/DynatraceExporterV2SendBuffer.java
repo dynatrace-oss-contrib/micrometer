@@ -79,10 +79,12 @@ class DynatraceExporterV2SendBuffer {
         currentBodySizeBytes = currentBodySizeBytes + line.getBytes().length;
         currentBatchSize++;
 
+        // batch is full after adding the last item, send request
         if (currentBatchSize == maxBatchSize) {
             sendAndReset();
         }
         else if (currentBatchSize > maxBatchSize) {
+            // this branch should never be reached.
             logger.warn("batch size ({}) larger than max batch size ({}), attempting to send...", currentBatchSize,
                     maxBatchSize);
             sendAndReset();
@@ -104,7 +106,6 @@ class DynatraceExporterV2SendBuffer {
 
         if (null != apiToken) {
             requestBuilder.withAuthentication("Api-Token", apiToken);
-            // requestBuilder.withHeader("Authorization", "Api-Token " + apiToken);
         }
 
         String body = stringBuilder.toString();
