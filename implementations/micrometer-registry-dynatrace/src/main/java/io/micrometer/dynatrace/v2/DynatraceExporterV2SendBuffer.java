@@ -125,48 +125,9 @@ class DynatraceExporterV2SendBuffer {
             exportStatistics.incrementLinesSent(currentBatchSize);
         }
         catch (Throwable throwable) {
-            // the "general" logger logs the message, the WarnThenDebugLogger logs the
-            // stack trace.
-            logger.warn("Failed metric ingestion: {}", throwable.getMessage());
-            // throwable.printStackTrace();
-            // stackTraceLogger.log(String.format("Stack trace for previous 'Failed metric
-            // ingestion' warning log: %s",
-            // throwable.getMessage()), throwable);
+            // log at info to not spam application logs with warnings
+            logger.info("Failed metric ingestion: {}", throwable.getMessage());
         }
-
-        // String endpoint = config.uri();
-        // if (!isValidEndpoint(endpoint)) {
-        // logger.warn("Invalid endpoint, skipping export... ({})", endpoint);
-        // return;
-        // }
-        // try {
-        // int lineCount = metricLines.size();
-        // logger.debug("Sending {} lines to {}", lineCount, endpoint);
-        //
-        // String body = String.join("\n", metricLines);
-        // logger.debug("Sending lines:\n{}", body);
-        //
-        // HttpSender.Request.Builder requestBuilder = httpClient.post(endpoint);
-        // if (!shouldIgnoreToken(config)) {
-        // requestBuilder.withHeader("Authorization", "Api-Token " + config.apiToken());
-        // }
-        //
-        // requestBuilder.withHeader("User-Agent", "micrometer")
-        // .withPlainText(body)
-        // .send()
-        // .onSuccess(response -> handleSuccess(lineCount, response))
-        // .onError(response -> logger.error("Failed metric ingestion: Error Code={},
-        // Response Body={}",
-        // response.code(), getTruncatedBody(response)));
-        // } catch (Throwable throwable) {
-        // // the "general" logger logs the message, the WarnThenDebugLogger logs the
-        // // stack trace.
-        // logger.warn("Failed metric ingestion: {}", throwable.toString());
-        // stackTraceLogger.log(String.format("Stack trace for previous 'Failed metric
-        // ingestion' warning log: %s",
-        // throwable.getMessage()), throwable);
-        // }
-
         reset();
     }
 
