@@ -34,6 +34,8 @@ import io.micrometer.core.instrument.step.StepMeterRegistry;
 import io.micrometer.core.instrument.util.MeterPartition;
 import io.micrometer.core.instrument.util.NamedThreadFactory;
 import io.micrometer.core.instrument.util.TimeUtils;
+import io.micrometer.core.ipc.http.CustomSslCertHttpSender;
+import io.micrometer.core.ipc.http.HttpSender;
 import io.micrometer.core.ipc.http.HttpUrlConnectionSender;
 import io.micrometer.registry.otlp.internal.CumulativeBase2ExponentialHistogram;
 import io.micrometer.registry.otlp.internal.DeltaBase2ExponentialHistogram;
@@ -115,7 +117,17 @@ public class OtlpMeterRegistry extends PushMeterRegistry {
      * @since 1.14.0
      */
     public OtlpMeterRegistry(OtlpConfig config, Clock clock, ThreadFactory threadFactory) {
-        this(config, clock, threadFactory, new OtlpHttpMetricsSender(new HttpUrlConnectionSender()));
+        this(config, clock, threadFactory, new OtlpHttpMetricsSender(getHttpSender(config)));
+    }
+
+    // todo: this also needs to be done in Spring Boot Autoconfiguration for OtlpMeterRegistry
+    private static HttpSender getHttpSender(OtlpConfig config) {
+        try {
+            return new CustomSslCertHttpSender(config.caFile());
+        } catch (Exception e) {
+            // ignore and fallback to default
+        }
+        return new HttpUrlConnectionSender();
     }
 
     private OtlpMeterRegistry(OtlpConfig config, Clock clock, ThreadFactory threadFactory,
