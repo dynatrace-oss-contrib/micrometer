@@ -291,11 +291,14 @@ public interface OtlpConfig extends PushRegistryConfig {
     }
 
     /**
-     * Configures whether a custom certificate should be used to validate the OTLP endpoint.
-     * If unset, the environment variable {@code OTEL_EXPORTER_OTLP_METRICS_CERTIFICATE} will be used.
-     * If the environment variable is also unset, no custom certificate will be used.
-     * @return the path to the custom certificate file, or an empty string if no custom certificate should be used
-     * @see <a href="https://opentelemetry.io/docs/specs/otel/protocol/exporter/#configuration-options">OTLP
+     * Configures whether a custom certificate should be used to validate the OTLP
+     * endpoint. If unset, the environment variable
+     * {@code OTEL_EXPORTER_OTLP_METRICS_CERTIFICATE} will be used. If the environment
+     * variable is also unset, no custom certificate will be used.
+     * @return the path to the custom certificate file, or an empty string if no custom
+     * certificate should be used
+     * @see <a href=
+     * "https://opentelemetry.io/docs/specs/otel/protocol/exporter/#configuration-options">OTLP
      * exporter configuration options</a>
      * @since 1.16.0
      */

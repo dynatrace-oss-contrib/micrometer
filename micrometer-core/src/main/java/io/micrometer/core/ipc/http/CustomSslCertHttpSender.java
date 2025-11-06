@@ -30,27 +30,33 @@ import java.util.*;
 import java.util.logging.Logger;
 
 /**
- * HttpSender implementation that uses a custom self-signed certificate for HTTPS requests.
- * Only requests made by this sender use the custom certificate.
+ * HttpSender implementation that uses a custom self-signed certificate for HTTPS
+ * requests. Only requests made by this sender use the custom certificate.
  */
 public class CustomSslCertHttpSender implements HttpSender {
+
     private static final int DEFAULT_CONNECT_TIMEOUT_MS = 1000;
 
     private static final int DEFAULT_READ_TIMEOUT_MS = 10000;
 
     private final int connectTimeoutMs;
+
     private final int readTimeoutMs;
+
     private final SSLSocketFactory sslSocketFactory;
+
     private final HostnameVerifier hostnameVerifier;
+
     private final Set<String> allowedHostnames;
 
     /**
-     * @param certFilePath   Path to the self-signed certificate file (PEM or DER encoded)
+     * @param certFilePath Path to the self-signed certificate file (PEM or DER encoded)
      * @param connectTimeout connect timeout
-     * @param readTimeout    read timeout
+     * @param readTimeout read timeout
      * @throws Exception if certificate loading fails
      */
-    public CustomSslCertHttpSender(String certFilePath, Duration connectTimeout, Duration readTimeout) throws Exception {
+    public CustomSslCertHttpSender(String certFilePath, Duration connectTimeout, Duration readTimeout)
+            throws Exception {
         if (certFilePath.isEmpty()) {
             throw new IllegalArgumentException("certFilePath cannot be empty");
         }
@@ -62,7 +68,8 @@ public class CustomSslCertHttpSender implements HttpSender {
         this.allowedHostnames = holder.getAllowedHostnames();
         this.sslSocketFactory = holder.getSslSocketFactory();
         // this is a fallback for when the SSL handshake fails.
-        // HostnameVerifier::verify is not called if the handshake succeeds with the read cert.
+        // HostnameVerifier::verify is not called if the handshake succeeds with the read
+        // cert.
         this.hostnameVerifier = this::verifyHostname;
     }
 
@@ -71,7 +78,8 @@ public class CustomSslCertHttpSender implements HttpSender {
     }
 
     private boolean verifyHostname(String hostname, SSLSession session) {
-        // log.info("Fallback hostname verification: " + hostname + " | allowed Hostnames: " + String.join(", ", allowedHostnames));
+        // log.info("Fallback hostname verification: " + hostname + " | allowed Hostnames:
+        // " + String.join(", ", allowedHostnames));
         return allowedHostnames.contains(hostname);
     }
 
@@ -80,7 +88,8 @@ public class CustomSslCertHttpSender implements HttpSender {
         URL url = request.getUrl();
         if ("https".equalsIgnoreCase(url.getProtocol())) {
             return sendHttps(request);
-        } else {
+        }
+        else {
             return sendHttp(request);
         }
     }
@@ -115,19 +124,23 @@ public class CustomSslCertHttpSender implements HttpSender {
             try {
                 if (con.getErrorStream() != null) {
                     body = IOUtils.toString(con.getErrorStream());
-                } else if (con.getInputStream() != null) {
+                }
+                else if (con.getInputStream() != null) {
                     body = IOUtils.toString(con.getInputStream());
                 }
-            } catch (IOException ignored) {
+            }
+            catch (IOException ignored) {
             }
 
             return new Response(status, body);
-        } finally {
+        }
+        finally {
             try {
                 if (con != null) {
                     con.disconnect();
                 }
-            } catch (Exception ignore) {
+            }
+            catch (Exception ignore) {
             }
         }
     }
@@ -164,7 +177,8 @@ public class CustomSslCertHttpSender implements HttpSender {
                     }
                 }
             }
-        } catch (CertificateParsingException e) {
+        }
+        catch (CertificateParsingException e) {
             // Ignore parsing exceptions for SANs
         }
 
@@ -172,12 +186,15 @@ public class CustomSslCertHttpSender implements HttpSender {
     }
 
     private static class CertificateHolder {
+
         private final X509Certificate certificate;
+
         private final SSLSocketFactory sslSocketFactory;
+
         private final Set<String> allowedHostnames;
 
         public CertificateHolder(X509Certificate certificate, SSLSocketFactory sslSocketFactory,
-                                 Set<String> allowedHostnames) {
+                Set<String> allowedHostnames) {
             this.certificate = certificate;
             this.sslSocketFactory = sslSocketFactory;
             this.allowedHostnames = allowedHostnames;
@@ -194,6 +211,7 @@ public class CustomSslCertHttpSender implements HttpSender {
         public Set<String> getAllowedHostnames() {
             return allowedHostnames;
         }
+
     }
 
     private static CertificateHolder loadCertificate(String certFilePath) throws Exception {
@@ -212,5 +230,5 @@ public class CustomSslCertHttpSender implements HttpSender {
             return new CertificateHolder(caCert, context.getSocketFactory(), extractAllowedHostnames(caCert));
         }
     }
-}
 
+}

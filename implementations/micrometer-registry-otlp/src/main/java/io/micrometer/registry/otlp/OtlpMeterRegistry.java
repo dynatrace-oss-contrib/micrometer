@@ -120,12 +120,16 @@ public class OtlpMeterRegistry extends PushMeterRegistry {
         this(config, clock, threadFactory, new OtlpHttpMetricsSender(getHttpSender(config)));
     }
 
-    // todo: this also needs to be done in Spring Boot Autoconfiguration for OtlpMeterRegistry
+    // todo: this also needs to be done in Spring Boot Autoconfiguration for
+    // OtlpMeterRegistry
     private static HttpSender getHttpSender(OtlpConfig config) {
-        try {
-            return new CustomSslCertHttpSender(config.caFile());
-        } catch (Exception e) {
-            // ignore and fallback to default
+        if (!config.caFile().isEmpty()) {
+            try {
+                return new CustomSslCertHttpSender(config.caFile());
+            }
+            catch (Exception e) {
+                // ignore and fallback to default
+            }
         }
         return new HttpUrlConnectionSender();
     }
@@ -617,13 +621,17 @@ public class OtlpMeterRegistry extends PushMeterRegistry {
             this.metricsSender = new OtlpHttpMetricsSender(new HttpUrlConnectionSender());
         }
 
-        /** Override the default clock. */
+        /**
+         * Override the default clock.
+         */
         public Builder clock(Clock clock) {
             this.clock = clock;
             return this;
         }
 
-        /** Override the default {@link ThreadFactory}. */
+        /**
+         * Override the default {@link ThreadFactory}.
+         */
         public Builder threadFactory(ThreadFactory threadFactory) {
             this.threadFactory = threadFactory;
             return this;
@@ -633,6 +641,7 @@ public class OtlpMeterRegistry extends PushMeterRegistry {
          * Provide your own custom metrics sender. This can be used to send OTLP metrics
          * from OtlpMeterRegistry using different transports or clients than the default
          * (HTTP using the HttpUrlConnectionSender). Encoding is in OTLP protobuf format.
+         *
          * @see OtlpHttpMetricsSender
          */
         public Builder metricsSender(OtlpMetricsSender metricsSender) {
