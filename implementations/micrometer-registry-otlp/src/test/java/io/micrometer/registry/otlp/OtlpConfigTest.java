@@ -141,6 +141,34 @@ class OtlpConfigTest {
     }
 
     @Test
+    void certificateIsNullByDefault() {
+        OtlpConfig config = k -> null;
+        assertThat(config.certificate()).isNull();
+    }
+
+    @Test
+    void certificateConfigTakesPrecedenceOverEnvVars() throws Exception {
+        OtlpConfig config = k -> "/path/to/config-cert.pem";
+        withEnvironmentVariable("OTEL_EXPORTER_OTLP_CERTIFICATE", "/path/to/env-cert.pem")
+            .execute(() -> assertThat(config.certificate()).isEqualTo("/path/to/config-cert.pem"));
+    }
+
+    @Test
+    void certificateUseEnvVarWhenConfigNotSet() throws Exception {
+        OtlpConfig config = k -> null;
+        withEnvironmentVariable("OTEL_EXPORTER_OTLP_CERTIFICATE", "/path/to/env-cert.pem")
+            .execute(() -> assertThat(config.certificate()).isEqualTo("/path/to/env-cert.pem"));
+    }
+
+    @Test
+    void metricsCertificateEnvVarTakesPrecedenceOverGenericEnvVar() throws Exception {
+        OtlpConfig config = k -> null;
+        withEnvironmentVariables("OTEL_EXPORTER_OTLP_METRICS_CERTIFICATE", "/path/to/metrics-cert.pem",
+                "OTEL_EXPORTER_OTLP_CERTIFICATE", "/path/to/generic-cert.pem")
+            .execute(() -> assertThat(config.certificate()).isEqualTo("/path/to/metrics-cert.pem"));
+    }
+
+    @Test
     void resourceAttributesFromEnvironmentVariables() throws Exception {
         withEnvironmentVariables("OTEL_RESOURCE_ATTRIBUTES", "a=1,b=2", "OTEL_SERVICE_NAME", "my-service")
             .execute(() -> {

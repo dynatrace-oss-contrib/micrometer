@@ -20,6 +20,7 @@ import io.micrometer.core.instrument.config.InvalidConfigurationException;
 import io.micrometer.core.instrument.config.validate.InvalidReason;
 import io.micrometer.core.instrument.config.validate.Validated;
 import io.micrometer.core.instrument.push.PushRegistryConfig;
+import org.jspecify.annotations.Nullable;
 
 import java.net.URLDecoder;
 import java.time.Duration;
@@ -229,6 +230,32 @@ public interface OtlpConfig extends PushRegistryConfig {
             .filter(keyValue -> keyValue.length() > 2 && keyValue.indexOf('=') > 0)
             .collect(Collectors.toMap(keyValue -> keyValue.substring(0, keyValue.indexOf('=')).trim(),
                     keyValue -> keyValue.substring(keyValue.indexOf('=') + 1).trim(), (l, r) -> r));
+    }
+
+    /**
+     * Path to a trusted CA certificate file (PEM format) used to verify the OTLP
+     * server's TLS certificate. This is useful when the server presents a certificate
+     * that is not signed by a CA in the JVM's default truststore (e.g. a self-signed
+     * certificate).
+     * <p>
+     * By default, this will be loaded from {@link #get(String)}. If that is not set, it
+     * will be taken from the environment variables
+     * {@code OTEL_EXPORTER_OTLP_METRICS_CERTIFICATE} and
+     * {@code OTEL_EXPORTER_OTLP_CERTIFICATE}, in that order.
+     * @return path to a trusted CA certificate file, or {@code null} if not configured
+     * @see <a href=
+     * "https://opentelemetry.io/docs/specs/otel/protocol/exporter/#configuration-options">OTLP
+     * Exporter Configuration Options</a>
+     */
+    default @Nullable String certificate() {
+        return getString(this, "certificate").orElseGet(() -> {
+            Map<String, String> env = System.getenv();
+            String cert = env.get("OTEL_EXPORTER_OTLP_METRICS_CERTIFICATE");
+            if (cert == null) {
+                cert = env.get("OTEL_EXPORTER_OTLP_CERTIFICATE");
+            }
+            return cert;
+        });
     }
 
     /**

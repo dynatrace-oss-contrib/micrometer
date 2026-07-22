@@ -43,6 +43,7 @@ import io.opentelemetry.proto.metrics.v1.ScopeMetrics;
 import io.opentelemetry.proto.resource.v1.Resource;
 import org.jspecify.annotations.Nullable;
 
+import javax.net.ssl.SSLSocketFactory;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.Executors;
@@ -115,7 +116,7 @@ public class OtlpMeterRegistry extends PushMeterRegistry {
      * @since 1.14.0
      */
     public OtlpMeterRegistry(OtlpConfig config, Clock clock, ThreadFactory threadFactory) {
-        this(config, clock, threadFactory, new OtlpHttpMetricsSender(new HttpUrlConnectionSender()), null);
+        this(config, clock, threadFactory, defaultMetricsSender(config), null);
     }
 
     private OtlpMeterRegistry(OtlpConfig config, Clock clock, ThreadFactory threadFactory,
@@ -615,6 +616,15 @@ public class OtlpMeterRegistry extends PushMeterRegistry {
         return null;
     }
 
+    private static OtlpMetricsSender defaultMetricsSender(OtlpConfig config) {
+        String caCertificatePath = config.certificate();
+        if (caCertificatePath == null) {
+            return new OtlpHttpMetricsSender(new HttpUrlConnectionSender());
+        }
+        SSLSocketFactory sslSocketFactory = OtlpTlsConfigurer.createSslSocketFactory(caCertificatePath);
+        return new OtlpHttpMetricsSender(new HttpUrlConnectionSender(sslSocketFactory));
+    }
+
     /**
      * Builder for {@link OtlpMeterRegistry}.
      *
@@ -634,7 +644,7 @@ public class OtlpMeterRegistry extends PushMeterRegistry {
 
         private Builder(OtlpConfig otlpConfig) {
             this.otlpConfig = otlpConfig;
-            this.metricsSender = new OtlpHttpMetricsSender(new HttpUrlConnectionSender());
+            this.metricsSender = defaultMetricsSender(otlpConfig);
         }
 
         /** Override the default clock. */

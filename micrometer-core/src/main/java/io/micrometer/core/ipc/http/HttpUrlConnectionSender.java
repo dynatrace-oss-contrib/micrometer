@@ -18,6 +18,8 @@ package io.micrometer.core.ipc.http;
 import io.micrometer.core.instrument.util.IOUtils;
 import org.jspecify.annotations.Nullable;
 
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLSocketFactory;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
@@ -44,6 +46,8 @@ public class HttpUrlConnectionSender implements HttpSender {
 
     private final @Nullable Proxy proxy;
 
+    private final @Nullable SSLSocketFactory sslSocketFactory;
+
     /**
      * Creates a sender with the specified timeouts but uses the default proxy settings.
      * @param connectTimeout connect timeout when establishing a connection
@@ -61,9 +65,37 @@ public class HttpUrlConnectionSender implements HttpSender {
      * @since 1.2.0
      */
     public HttpUrlConnectionSender(Duration connectTimeout, Duration readTimeout, @Nullable Proxy proxy) {
+        this(connectTimeout, readTimeout, proxy, null);
+    }
+
+    /**
+     * Creates a sender with the specified timeouts, proxy, and SSL socket factory
+     * settings.
+     * @param connectTimeout connect timeout when establishing a connection
+     * @param readTimeout read timeout when receiving a response
+     * @param proxy proxy to use when establishing a connection
+     * @param sslSocketFactory SSL socket factory to use for HTTPS connections, or
+     * {@code null} to use the JVM default
+     * @since 1.18.0
+     */
+    public HttpUrlConnectionSender(Duration connectTimeout, Duration readTimeout, @Nullable Proxy proxy,
+            @Nullable SSLSocketFactory sslSocketFactory) {
         this.connectTimeoutMs = (int) connectTimeout.toMillis();
         this.readTimeoutMs = (int) readTimeout.toMillis();
         this.proxy = proxy;
+        this.sslSocketFactory = sslSocketFactory;
+    }
+
+    /**
+     * Use the default timeouts and proxy settings for the sender, with the specified
+     * SSL socket factory for HTTPS connections.
+     * @param sslSocketFactory SSL socket factory to use for HTTPS connections
+     */
+    public HttpUrlConnectionSender(SSLSocketFactory sslSocketFactory) {
+        this.connectTimeoutMs = DEFAULT_CONNECT_TIMEOUT_MS;
+        this.readTimeoutMs = DEFAULT_READ_TIMEOUT_MS;
+        this.proxy = null;
+        this.sslSocketFactory = sslSocketFactory;
     }
 
     /**
@@ -73,6 +105,7 @@ public class HttpUrlConnectionSender implements HttpSender {
         this.connectTimeoutMs = DEFAULT_CONNECT_TIMEOUT_MS;
         this.readTimeoutMs = DEFAULT_READ_TIMEOUT_MS;
         this.proxy = null;
+        this.sslSocketFactory = null;
     }
 
     @Override
@@ -84,6 +117,9 @@ public class HttpUrlConnectionSender implements HttpSender {
             }
             else {
                 con = (HttpURLConnection) request.getUrl().openConnection();
+            }
+            if (sslSocketFactory != null && con instanceof HttpsURLConnection) {
+                ((HttpsURLConnection) con).setSSLSocketFactory(sslSocketFactory);
             }
             con.setConnectTimeout(connectTimeoutMs);
             con.setReadTimeout(readTimeoutMs);
